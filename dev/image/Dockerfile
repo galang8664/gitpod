@@ -242,6 +242,11 @@ RUN curl https://raw.githubusercontent.com/replicatedhq/replicated/$(curl -s htt
     curl https://kots.io/install | sudo bash && \
     bash -c "echo . \<\(kubectl kots completion bash\) >> ~/.bashrc"
 
+### Certbot
+RUN bash -c "pip install certbot"
+RUN sudo install-packages python3-certbot-dns-google
+RUN bash -c "pip uninstall crcmod; pip install --no-cache-dir -U crcmod"
+
 # Install fish shell
 RUN sudo apt-add-repository -y ppa:fish-shell/release-3 && \
     sudo apt update && \
