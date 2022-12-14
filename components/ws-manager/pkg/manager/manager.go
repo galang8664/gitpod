@@ -1739,8 +1739,8 @@ func waitForSecretInNamespace(client client.Client, namespace, name string) erro
 
 func secretInNamespace(client client.Client, namespace, name string) wait.ConditionFunc {
 	return func() (bool, error) {
-		var secret *corev1.Secret
-		err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, secret)
+		var secret corev1.Secret
+		err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, &secret)
 		if k8serr.IsNotFound(err) {
 			return false, nil
 		}
@@ -1749,10 +1749,6 @@ func secretInNamespace(client client.Client, namespace, name string) wait.Condit
 			return false, err
 		}
 
-		if secret != nil {
-			return true, nil
-		}
-
-		return false, nil
+		return true, nil
 	}
 }
