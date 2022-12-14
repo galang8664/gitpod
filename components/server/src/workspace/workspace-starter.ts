@@ -501,7 +501,7 @@ export class WorkspaceStarter {
                             break;
                         }
                         await new Promise((resolve) =>
-                            setTimeout(resolve, INSTANCE_START_RETRY_INTERVAL_SECONDS * 1000),
+                            setTimeout(resolve, INSTANCE_START_RETRY_INTERVAL_SECONDS * 60000),
                         );
                     }
                 } catch (err) {
