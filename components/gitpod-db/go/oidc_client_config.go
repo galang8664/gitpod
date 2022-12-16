@@ -19,7 +19,7 @@ type OIDCClientConfig struct {
 
 	Issuer string `gorm:"column:issuer;type:char;size:255;" json:"issuer"`
 
-	Data EncryptedJSON `gorm:"column:data;type:text;size:65535" json:"data"`
+	Data EncryptedJSON[OIDCSpec] `gorm:"column:data;type:text;size:65535" json:"data"`
 
 	LastModified time.Time `gorm:"column:_lastModified;type:timestamp;default:CURRENT_TIMESTAMP(6);" json:"_lastModified"`
 	// deleted is reserved for use by db-sync.

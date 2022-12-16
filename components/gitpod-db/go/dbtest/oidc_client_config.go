@@ -14,28 +14,11 @@ import (
 	"time"
 )
 
-var (
-	TestAES256CipherKey      = `testtesttesttesttesttesttesttest`
-	TestAES256CipherMetadata = db.CipherMetadata{
-		Name:    "default",
-		Version: 1,
-	}
-	TestAES256CBCCipher *db.AES256CBC
-)
-
-func init() {
-	cipher, err := db.NewAES256CBCCipher(TestAES256CipherKey, TestAES256CipherMetadata)
-	if err != nil {
-		panic("failed to initialize test AES 256 CBC Cipher")
-	}
-
-	TestAES256CBCCipher = cipher
-}
-
 func NewOIDCClientConfig(t *testing.T, record db.OIDCClientConfig) db.OIDCClientConfig {
 	t.Helper()
 
-	encrypted, err := db.EncryptJSON(TestAES256CBCCipher, []byte(`{}`))
+	cipher, _ := GetTestCipher(t)
+	encrypted, err := db.EncryptJSON(cipher, []byte(`{}`))
 	require.NoError(t, err)
 
 	now := time.Now().UTC().Truncate(time.Millisecond)

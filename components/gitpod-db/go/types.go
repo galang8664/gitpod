@@ -141,11 +141,11 @@ func VarcharTimeToTimestamppb(t VarcharTime) *timestamppb.Timestamp {
 	return timestamppb.New(t.Time())
 }
 
-type EncryptedJSON datatypes.JSON
+type EncryptedJSON[T any] datatypes.JSON
 
-func (j EncryptedJSON) EncryptedData() (EncryptedData, error) {
+func (j *EncryptedJSON[T]) EncryptedData() (EncryptedData, error) {
 	var data EncryptedData
-	err := json.Unmarshal(j, &data)
+	err := json.Unmarshal(*j, &data)
 	if err != nil {
 		return EncryptedData{}, fmt.Errorf("failed to unmarshal encrypted json: %w", err)
 	}
@@ -153,7 +153,27 @@ func (j EncryptedJSON) EncryptedData() (EncryptedData, error) {
 	return data, nil
 }
 
-func EncryptJSON(encryptor Encryptor, data interface{}) (EncryptedJSON, error) {
+func (j *EncryptedJSON[T]) Decrypt(decryptor Decryptor) (*T, error) {
+	data, err := j.EncryptedData()
+	if err != nil {
+		return nil, fmt.Errorf("failed to obtain encrypted data: %w", err)
+	}
+
+	b, err := decryptor.Decrypt(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt encrypted json: %w", err)
+	}
+
+	out := new(T)
+	err = json.Unmarshal(b, out)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal encrypted json: %w", err)
+	}
+
+	return out, nil
+}
+
+func EncryptJSON[T any](encryptor Encryptor, data T) (EncryptedJSON[T], error) {
 	b, err := json.Marshal(data)
 	if err != nil {
 		return EncryptedJSON{}, fmt.Errorf("failed to marshal data into json: %w", err)
@@ -164,13 +184,13 @@ func EncryptJSON(encryptor Encryptor, data interface{}) (EncryptedJSON, error) {
 		return EncryptedJSON{}, fmt.Errorf("failed to encrypt json: %w", err)
 	}
 
-	return NewEncryptedJSON(encrypted)
+	return NewEncryptedJSON[T](encrypted)
 }
 
-func NewEncryptedJSON(data EncryptedData) (EncryptedJSON, error) {
+func NewEncryptedJSON[T any](data T) (EncryptedJSON[T], error) {
 	b, err := json.Marshal(data)
 	if err != nil {
-		return EncryptedJSON{}, fmt.Errorf("failed to serialize encrypted data into json: %w", err)
+		return EncryptedJSON[T]{}, fmt.Errorf("failed to serialize encrypted data into json: %w", err)
 	}
 
 	return b, nil
