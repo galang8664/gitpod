@@ -137,6 +137,12 @@ func (s *Service) tryConnToPublicAPI() {
 	log.WithField("endpoint", endpoint).Info("connecting to PublicAPI...")
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS13})),
+		grpc.WithStreamInterceptor(grpc_middleware.ChainStreamClient([]grpc.StreamClientInterceptor{
+			func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+				withAuth := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+s.token)
+				return streamer(withAuth, desc, cc, method, opts...)
+			},
+		}...)),
 		grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient([]grpc.UnaryClientInterceptor{
 			s.publicApiMetrics.UnaryClientInterceptor(),
 			func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
@@ -378,13 +384,13 @@ func (s *Service) RegisterMetrics(registry *prometheus.Registry) error {
 	return registry.Register(s.publicApiMetrics)
 }
 
-func (s *Service) TTest(ctx context.Context, workspaceID string) error {
+func (s *Service) TTest(ctx context.Context, instanceId string) error {
 	if s == nil {
 		return errNotConnected
 	}
 	service := v1.NewWorkspacesServiceClient(s.publicAPIConn)
 	resp, err := service.InstanceUpdate(ctx, &v1.InstanceUpdateRequest{
-		WorkspaceId: workspaceID,
+		InstanceId: instanceId,
 	})
 	if err != nil {
 		log.WithError(err).Error("get instance update failed ===============")
