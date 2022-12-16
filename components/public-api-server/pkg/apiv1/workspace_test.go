@@ -351,38 +351,9 @@ var workspaceTestData = []workspaceTestDataEntry{
 }
 
 func TestConvertWorkspaceInfo(t *testing.T) {
-	type Expectation struct {
-		Result *v1.Workspace
-		Error  string
-	}
-	tests := []struct {
-		Name        string
-		Input       protocol.WorkspaceInfo
-		Expectation Expectation
-	}{
-		{
-			Name:        "happy path",
-			Input:       workspaceTestData[0].Protocol,
-			Expectation: Expectation{Result: workspaceTestData[0].API},
-		},
-	}
+	t.Run("should receive stream after update port", func(t *testing.T) {
 
-	for _, test := range tests {
-		t.Run(test.Name, func(t *testing.T) {
-			var (
-				act Expectation
-				err error
-			)
-			act.Result, err = convertWorkspaceInfo(&test.Input)
-			if err != nil {
-				act.Error = err.Error()
-			}
-
-			if diff := cmp.Diff(test.Expectation, act, protocmp.Transform()); diff != "" {
-				t.Errorf("unexpected convertWorkspaceInfo (-want +got):\n%s", diff)
-			}
-		})
-	}
+	})
 }
 
 func FuzzConvertWorkspaceInfo(f *testing.F) {

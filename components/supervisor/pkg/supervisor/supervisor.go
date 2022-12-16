@@ -254,6 +254,7 @@ func Run(options ...RunOption) {
 	if !cfg.isHeadless() {
 		go trackReadiness(ctx, gitpodService, cfg, cstate, ideReady, desktopIdeReady)
 	}
+	go gitpodService.TTest(ctx, cfg.WorkspaceInstanceID)
 	tokenService.provider[KindGit] = []tokenProvider{NewGitTokenProvider(gitpodService, cfg.WorkspaceConfig, notificationService)}
 
 	gitpodConfigService := config.NewConfigService(cfg.RepoRoot+"/.gitpod.yml", cstate.ContentReady(), log.Log)

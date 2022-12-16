@@ -70,6 +70,36 @@ func (s *WorkspaceService) GetWorkspace(ctx context.Context, req *connect.Reques
 	}), nil
 }
 
+func (s *WorkspaceService) InstanceUpdate(ctx context.Context, req *connect.Request[v1.InstanceUpdateRequest], stream *connect.ServerStream[v1.InstanceUpdateResponse]) error {
+	// logger := ctxlogrus.Extract(ctx)
+
+	conn, err := getConnection(ctx, s.connectionPool)
+	if err != nil {
+		return err
+	}
+	ch, err := conn.InstanceUpdates(ctx, req.Msg.GetInstanceId())
+	if err != nil {
+		return nil
+	}
+
+	for {
+		select {
+		case instance := <-ch:
+			createdAt, _ := parseGitpodTimestamp(instance.CreationTime)
+			_ = stream.Send(&v1.InstanceUpdateResponse{
+				Result: &v1.WorkspaceInstance{
+					InstanceId:  instance.ID,
+					WorkspaceId: instance.WorkspaceID,
+					CreatedAt:   createdAt,
+					Status:      &v1.WorkspaceInstanceStatus{},
+				},
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
 func (s *WorkspaceService) GetOwnerToken(ctx context.Context, req *connect.Request[v1.GetOwnerTokenRequest]) (*connect.Response[v1.GetOwnerTokenResponse], error) {
 	logger := ctxlogrus.Extract(ctx)
 	conn, err := getConnection(ctx, s.connectionPool)

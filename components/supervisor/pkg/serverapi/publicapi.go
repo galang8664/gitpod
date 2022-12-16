@@ -37,6 +37,8 @@ type APIInterface interface {
 
 	// Metrics
 	RegisterMetrics(registry *prometheus.Registry) error
+
+	TTest(ctx context.Context, workspaceID string) error
 }
 
 const (
@@ -374,4 +376,26 @@ func (s *Service) RegisterMetrics(registry *prometheus.Registry) error {
 		return errNotConnected
 	}
 	return registry.Register(s.publicApiMetrics)
+}
+
+func (s *Service) TTest(ctx context.Context, workspaceID string) error {
+	if s == nil {
+		return errNotConnected
+	}
+	service := v1.NewWorkspacesServiceClient(s.publicAPIConn)
+	resp, err := service.InstanceUpdate(ctx, &v1.InstanceUpdateRequest{
+		WorkspaceId: workspaceID,
+	})
+	if err != nil {
+		log.WithError(err).Error("get instance update failed ===============")
+		return err
+	}
+	for {
+		data, err := resp.Recv()
+		if err != nil {
+			log.WithError(err).Error("receive error ===============")
+			return err
+		}
+		log.WithField("instanceID", data.Result.InstanceId).Info("receive data ===============")
+	}
 }

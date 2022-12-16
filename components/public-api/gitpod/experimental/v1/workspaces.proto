@@ -16,6 +16,9 @@ service WorkspacesService {
     // GetWorkspace returns a single workspace.
     rpc GetWorkspace(GetWorkspaceRequest) returns (GetWorkspaceResponse) {}
 
+    // InstanceUpdate returns workspace once it changed.
+    rpc InstanceUpdate(InstanceUpdateRequest) returns (stream InstanceUpdateResponse) {}
+
     // GetOwnerToken returns an owner token.
     rpc GetOwnerToken(GetOwnerTokenRequest) returns (GetOwnerTokenResponse) {}
 
@@ -46,6 +49,14 @@ message GetWorkspaceRequest {
 }
 message GetWorkspaceResponse {
     Workspace result = 1;
+}
+
+message InstanceUpdateRequest {
+    string instance_id = 1;
+}
+
+message InstanceUpdateResponse {
+    WorkspaceInstance result = 1;
 }
 
 message GetOwnerTokenRequest {
