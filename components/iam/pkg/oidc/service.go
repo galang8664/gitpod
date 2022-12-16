@@ -14,6 +14,7 @@ import (
 	"net/url"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/gitpod-io/gitpod/common-go/log"
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/oauth2"
 )
@@ -106,6 +107,7 @@ func (service *OIDCService) GetClientConfigFromRequest(r *http.Request) (*OIDCCl
 	if err != nil {
 		return nil, errors.New("bad issuer param")
 	}
+	log.WithField("issuer", issuer).Trace("at GetClientConfigFromRequest")
 
 	for _, value := range service.configsById {
 		if value.Issuer == issuer {

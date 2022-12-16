@@ -82,7 +82,9 @@ func (oidcService *OIDCService) clientConfigMiddleware() func(http.Handler) http
 
 			config, err := oidcService.GetClientConfigFromRequest(r)
 			if err != nil {
+				log.Warn("client config not found: " + err.Error())
 				http.Error(rw, "config not found", http.StatusNotFound)
+				return
 			}
 
 			ctx := context.WithValue(r.Context(), keyOIDCClientConfig{}, config)
