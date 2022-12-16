@@ -6,10 +6,10 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"time"
 )
@@ -19,7 +19,7 @@ type OIDCClientConfig struct {
 
 	Issuer string `gorm:"column:issuer;type:char;size:255;" json:"issuer"`
 
-	Data datatypes.JSON `gorm:"column:data;type:text;size:65535" json:"data"`
+	Data EncryptedJSON `gorm:"column:data;type:text;size:65535" json:"data"`
 
 	LastModified time.Time `gorm:"column:_lastModified;type:timestamp;default:CURRENT_TIMESTAMP(6);" json:"_lastModified"`
 	// deleted is reserved for use by db-sync.
@@ -28,6 +28,29 @@ type OIDCClientConfig struct {
 
 func (c *OIDCClientConfig) TableName() string {
 	return "d_b_oidc_client_config"
+}
+
+func (c *OIDCClientConfig) DecryptData(decryptor Decryptor) (OIDCSpec, error) {
+	data, err := c.Data.EncryptedData()
+	if err != nil {
+		return OIDCSpec{}, err
+	}
+
+	decrypted, err := decryptor.Decrypt(data)
+	if err != nil {
+		return OIDCSpec{}, fmt.Errorf("failed to decrypt data: %w", err)
+	}
+
+	var spec OIDCSpec
+	err = json.Unmarshal(decrypted, &spec)
+	if err != nil {
+		return OIDCSpec{}, fmt.Errorf("failed to unmarhsal encrypted data into oidc spec: %w", err)
+	}
+
+	return spec, nil
+}
+
+type OIDCSpec struct {
 }
 
 func CreateOIDCCLientConfig(ctx context.Context, conn *gorm.DB, cfg OIDCClientConfig) (OIDCClientConfig, error) {

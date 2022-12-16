@@ -14,9 +14,17 @@ import (
 	"fmt"
 )
 
-type Cipher interface {
+type Encryptor interface {
 	Encrypt(data []byte) (EncryptedData, error)
+}
+
+type Decryptor interface {
 	Decrypt(data EncryptedData) ([]byte, error)
+}
+
+type Cipher interface {
+	Encryptor
+	Decryptor
 }
 
 func NewAES256CBCCipher(secret string, metadata CipherMetadata) (*AES256CBC, error) {

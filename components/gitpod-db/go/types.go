@@ -6,7 +6,9 @@ package db
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
+	"gorm.io/datatypes"
 	"time"
 
 	"github.com/relvacode/iso8601"
@@ -137,4 +139,39 @@ func VarcharTimeToTimestamppb(t VarcharTime) *timestamppb.Timestamp {
 	}
 
 	return timestamppb.New(t.Time())
+}
+
+type EncryptedJSON datatypes.JSON
+
+func (j EncryptedJSON) EncryptedData() (EncryptedData, error) {
+	var data EncryptedData
+	err := json.Unmarshal(j, &data)
+	if err != nil {
+		return EncryptedData{}, fmt.Errorf("failed to unmarshal encrypted json: %w", err)
+	}
+
+	return data, nil
+}
+
+func EncryptJSON(encryptor Encryptor, data interface{}) (EncryptedJSON, error) {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return EncryptedJSON{}, fmt.Errorf("failed to marshal data into json: %w", err)
+	}
+
+	encrypted, err := encryptor.Encrypt(b)
+	if err != nil {
+		return EncryptedJSON{}, fmt.Errorf("failed to encrypt json: %w", err)
+	}
+
+	return NewEncryptedJSON(encrypted)
+}
+
+func NewEncryptedJSON(data EncryptedData) (EncryptedJSON, error) {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return EncryptedJSON{}, fmt.Errorf("failed to serialize encrypted data into json: %w", err)
+	}
+
+	return b, nil
 }
