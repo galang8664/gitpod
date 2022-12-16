@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package server
 
@@ -14,9 +14,9 @@ import (
 	"github.com/gitpod-io/gitpod/installer/pkg/cluster"
 	contentservice "github.com/gitpod-io/gitpod/installer/pkg/components/content-service"
 	"github.com/gitpod-io/gitpod/installer/pkg/components/usage"
+	wsmanager "github.com/gitpod-io/gitpod/installer/pkg/components/ws-manager"
 
 	"github.com/gitpod-io/gitpod/installer/pkg/common"
-	wsmanager "github.com/gitpod-io/gitpod/installer/pkg/components/ws-manager"
 	wsmanagerbridge "github.com/gitpod-io/gitpod/installer/pkg/components/ws-manager-bridge"
 	configv1 "github.com/gitpod-io/gitpod/installer/pkg/config/v1"
 	"github.com/gitpod-io/gitpod/installer/pkg/config/v1/experimental"
@@ -303,6 +303,30 @@ func deployment(ctx *common.RenderContext) ([]runtime.Object, error) {
 		return nil
 	})
 
+	addWsManagerTls := true
+	_ = ctx.WithExperimental(func(cfg *experimental.Config) error {
+		if cfg.WebApp != nil && cfg.WebApp.WithoutWorkspaceComponents {
+			// No ws-manager exists in the cluster, so no TLS secret to mount.
+			addWsManagerTls = false
+		}
+		return nil
+	})
+	if addWsManagerTls {
+		volumes = append(volumes, corev1.Volume{
+			Name: "ws-manager-client-tls-certs",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: wsmanager.TLSSecretNameClient,
+				},
+			},
+		})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "ws-manager-client-tls-certs",
+			MountPath: "/ws-manager-client-tls-certs",
+			ReadOnly:  true,
+		})
+	}
+
 	return []runtime.Object{
 		&appsv1.Deployment{
 			TypeMeta: common.TypeMetaDeployment,
@@ -354,14 +378,6 @@ func deployment(ctx *common.RenderContext) ([]runtime.Object, error) {
 										},
 									},
 								},
-								{
-									Name: "ws-manager-client-tls-certs",
-									VolumeSource: corev1.VolumeSource{
-										Secret: &corev1.SecretVolumeSource{
-											SecretName: wsmanager.TLSSecretNameClient,
-										},
-									},
-								},
 							},
 							volumes...,
 						),
@@ -391,8 +407,9 @@ func deployment(ctx *common.RenderContext) ([]runtime.Object, error) {
 								FailureThreshold:    6,
 							},
 							SecurityContext: &corev1.SecurityContext{
-								Privileged: pointer.Bool(false),
-								RunAsUser:  pointer.Int64(31001),
+								Privileged:               pointer.Bool(false),
+								AllowPrivilegeEscalation: pointer.Bool(false),
+								RunAsUser:                pointer.Int64(31001),
 							},
 							Ports: []corev1.ContainerPort{{
 								Name:          ContainerPortName,
@@ -424,11 +441,6 @@ func deployment(ctx *common.RenderContext) ([]runtime.Object, error) {
 									{
 										Name:      "ide-config",
 										MountPath: "/ide-config",
-										ReadOnly:  true,
-									},
-									{
-										Name:      "ws-manager-client-tls-certs",
-										MountPath: "/ws-manager-client-tls-certs",
 										ReadOnly:  true,
 									},
 								},

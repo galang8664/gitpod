@@ -1,25 +1,25 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package cmd
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 
 	"github.com/cockroachdb/errors"
-	kctx "github.com/gitpod-io/gitpod/previewctl/pkg/k8s/context"
-	"github.com/gitpod-io/gitpod/previewctl/pkg/k8s/context/gke"
-	"github.com/gitpod-io/gitpod/previewctl/pkg/k8s/context/harvester"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/homedir"
 
 	kube "github.com/gitpod-io/gitpod/previewctl/pkg/k8s"
+	kctx "github.com/gitpod-io/gitpod/previewctl/pkg/k8s/context"
+	"github.com/gitpod-io/gitpod/previewctl/pkg/k8s/context/gke"
+	"github.com/gitpod-io/gitpod/previewctl/pkg/k8s/context/harvester"
 )
 
 var (
@@ -56,11 +56,12 @@ merges them with the default config, and saves them to the path in KUBECONFIG or
 			}
 
 			opts.kubeConfigSavePath = getKubeConfigPath()
+
 			return kube.OutputContext(opts.kubeConfigSavePath, configs)
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&opts.serviceAccountPath, "gcp-service-account", "", "path to the GCP service account to use")
+	cmd.PersistentFlags().StringVar(&opts.serviceAccountPath, "gcp-service-account", viper.GetString("PREVIEW_ENV_DEV_SA_KEY_PATH"), "path to the GCP service account to use")
 
 	return cmd
 }
@@ -114,6 +115,7 @@ func hasAccess(ctx context.Context, logger *logrus.Logger, contextName string) b
 	config, err := kube.NewFromDefaultConfigWithContext(logger, contextName)
 	if err != nil {
 		if errors.Is(err, kube.ErrContextNotExists) {
+			logger.Error(err)
 			return false
 		}
 
@@ -124,7 +126,7 @@ func hasAccess(ctx context.Context, logger *logrus.Logger, contextName string) b
 }
 
 func getKubeConfigPath() string {
-	if v := os.Getenv("KUBECONFIG"); v != "" {
+	if v := viper.GetString("KUBECONFIG"); v != "" {
 		DefaultKubeConfigPath = v
 	}
 

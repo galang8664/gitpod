@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2020 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import { inject, injectable } from "inversify";
@@ -271,13 +271,13 @@ export class CodeSyncResourceDB {
             .getMany();
     }
 
-    async getCollections(userId: string): Promise<string[]> {
+    async getCollections(userId: string): Promise<{ id: string }[]> {
         const connection = await this.typeORM.getConnection();
         const result = await connection.manager
             .createQueryBuilder(DBCodeSyncCollection, "collection")
             .where("collection.userId = :userId AND collection.deleted = 0", { userId })
             .getMany();
-        return result.map((r) => r.collection);
+        return result.map((r) => ({ id: r.collection }));
     }
 
     async isCollection(userId: string, collection: string): Promise<boolean> {

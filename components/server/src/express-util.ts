@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2020 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import { URL } from "url";
@@ -92,7 +92,7 @@ export function destroySession(session: session.Session): Promise<void> {
  * @returns fingerprint which is a hash over (potential) client ip (or just proxy ip) and User Agent
  */
 export function getRequestingClientInfo(req: express.Request) {
-    const ip = req.ips[0] || req.ip; // on PROD this should be a client IP address
+    const ip = clientIp(req);
     const ua = req.get("user-agent");
     const fingerprint = crypto.createHash("sha256").update(`${ip}–${ua}`).digest("hex");
     return { ua, fingerprint };
@@ -170,3 +170,13 @@ export const takeFirst = (h: string | string[] | undefined): string | undefined 
     }
     return h;
 };
+
+export function clientIp(req: express.Request): string | undefined {
+    const forwardedFor = takeFirst(req.headers["x-forwarded-for"]);
+    if (!forwardedFor) {
+        return undefined;
+    }
+
+    // We now have a ,-separated string of IPs, where the first one is the (closest to) client IP
+    return forwardedFor.split(",")[0];
+}

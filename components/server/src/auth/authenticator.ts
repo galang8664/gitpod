@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2020 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import * as express from "express";
@@ -114,7 +114,8 @@ export class Authenticator {
             return;
         }
         if (!req.session) {
-            increaseLoginCounter("failed", authProvider.info.host);
+            // The session is missing entirely: count as client error
+            increaseLoginCounter("failed_client", authProvider.info.host);
             log.info({}, `No session.`, { "login-flow": true });
             res.redirect(this.getSorryUrl(`No session found. Please refresh the browser.`));
             return;

@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2022 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 /* eslint-disable */
@@ -421,7 +421,7 @@ export const IDEServiceDefinition = {
       requestStream: false,
       responseType: GetConfigResponse,
       responseStream: false,
-      options: {},
+      options: { idempotencyLevel: "IDEMPOTENT" },
     },
     resolveWorkspaceConfig: {
       name: "ResolveWorkspaceConfig",
@@ -429,7 +429,7 @@ export const IDEServiceDefinition = {
       requestStream: false,
       responseType: ResolveWorkspaceConfigResponse,
       responseStream: false,
-      options: {},
+      options: { idempotencyLevel: "IDEMPOTENT" },
     },
   },
 } as const;

@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package cloudsql
 
@@ -67,8 +67,9 @@ func deployment(ctx *common.RenderContext) ([]runtime.Object, error) {
 						Containers: []corev1.Container{{
 							Name: "cloud-sql-proxy",
 							SecurityContext: &corev1.SecurityContext{
-								Privileged:   pointer.Bool(false),
-								RunAsNonRoot: pointer.Bool(false),
+								Privileged:               pointer.Bool(false),
+								RunAsNonRoot:             pointer.Bool(false),
+								AllowPrivilegeEscalation: pointer.Bool(false),
 							},
 							Image: ctx.ImageName(ImageRepo, ImageName, ImageVersion),
 							Command: []string{

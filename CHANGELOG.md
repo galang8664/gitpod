@@ -1,6 +1,30 @@
 # Change Log
 
 ## December 2022
+- Allow specifying CA certificate to configure SSL secured database connections ([#15320](https://github.com/gitpod-io/gitpod/pull/15320)) - [@geropl](https://github.com/geropl)
+- Replace prebuild duration message emoji ([#15364](https://github.com/gitpod-io/gitpod/pull/15364)) - [@gtsiolis](https://github.com/gtsiolis)
+- Replace prebuild message emoji ([#15367](https://github.com/gitpod-io/gitpod/pull/15367)) - [@gtsiolis](https://github.com/gtsiolis)
+- Support AWS ECR container registry ([#15313](https://github.com/gitpod-io/gitpod/pull/15313)) - [@jenting](https://github.com/jenting), [@mrsimonemms](https://github.com/mrsimonemms)
+- Show team usage tab only for team owners ([#15350](https://github.com/gitpod-io/gitpod/pull/15350)) - [@gtsiolis](https://github.com/gtsiolis)
+- Projects can now be deleted from the corresponding Settings page for that project. ([#15316](https://github.com/gitpod-io/gitpod/pull/15316)) - [@selfcontained](https://github.com/selfcontained)
+- [installer]: add required bucket name to mirror kots command ([#15296](https://github.com/gitpod-io/gitpod/pull/15296)) - [@mrsimonemms](https://github.com/mrsimonemms)
+- Allow setting workspace class for prebuilds ([#15288](https://github.com/gitpod-io/gitpod/pull/15288)) - [@svenefftinge](https://github.com/svenefftinge)
+- Do not land workspaces on the node with broken ws-daemon ([#15262](https://github.com/gitpod-io/gitpod/pull/15262)) - [@utam0k](https://github.com/utam0k)
+- Expired Personal Access Tokens exclamation indicator now has a tooltip w/ the full expiration date so you can see exactly when it expired. ([#15253](https://github.com/gitpod-io/gitpod/pull/15253)) - [@selfcontained](https://github.com/selfcontained)
+- Update JetBrains IDE images to most recent stable version. ([#15270](https://github.com/gitpod-io/gitpod/pull/15270)) - [@roboquat](https://github.com/roboquat)
+- Support AWS S3 as storage backend ([#14970](https://github.com/gitpod-io/gitpod/pull/14970)) - [@Furisto](https://github.com/Furisto), [@csweichel](https://github.com/csweichel)
+- [installer]: make the kots install overwrite the config if exists ([#15263](https://github.com/gitpod-io/gitpod/pull/15263)) - [@mrsimonemms](https://github.com/mrsimonemms)
+- Update Stable JetBrains IDE images to 2022.3 ([#15240](https://github.com/gitpod-io/gitpod/pull/15240)) - [@felladrin](https://github.com/felladrin)
+- Quote Gitpod prices as excluding VAT. ([#15255](https://github.com/gitpod-io/gitpod/pull/15255)) - [@jldec](https://github.com/jldec)
+- Remove beta and early access labels for Teams, Projects, and Billing ([#15247](https://github.com/gitpod-io/gitpod/pull/15247)) - [@gtsiolis](https://github.com/gtsiolis)
+- Make code available as AGPL ([#15241](https://github.com/gitpod-io/gitpod/pull/15241)) - [@csweichel](https://github.com/csweichel)
+- Fixed an issue where a stopped workspace could not be restarted ([#15216](https://github.com/gitpod-io/gitpod/pull/15216)) - [@Furisto](https://github.com/Furisto)
+- Added versions of all the suppoerted IDEs to the Preferences page ([#15139](https://github.com/gitpod-io/gitpod/pull/15139)) - [@filiptronicek](https://github.com/filiptronicek)
+- Always allow running new prebuilds, regardless of any previous prebuild state ([#15147](https://github.com/gitpod-io/gitpod/pull/15147)) - [@jankeromnes](https://github.com/jankeromnes)
+- [gitpod.io] Disable upgrades to fixed-price monthly plans (Chargebee) for individuals and teams who have pay-as-you-go enabled (Stripe) ([#15092](https://github.com/gitpod-io/gitpod/pull/15092)) - [@jankeromnes](https://github.com/jankeromnes)
+- Do not land workspaces on the node with broken registry-facade ([#15053](https://github.com/gitpod-io/gitpod/pull/15053)) - [@utam0k](https://github.com/utam0k)
+- Fixes an issue with modals not displaying properly on smaller screens. ([#15084](https://github.com/gitpod-io/gitpod/pull/15084)) - [@selfcontained](https://github.com/selfcontained)
+- [installer] manually set `allowPrivilegeEscalation` to false ([#14918](https://github.com/gitpod-io/gitpod/pull/14918)) - [@Pothulapati](https://github.com/Pothulapati)
 - Update spacing in token regeneration modal ([#15107](https://github.com/gitpod-io/gitpod/pull/15107)) - [@gtsiolis](https://github.com/gtsiolis)
 
 ##  November 2022

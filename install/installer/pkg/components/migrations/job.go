@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package migrations
 
@@ -48,6 +48,9 @@ func job(ctx *common.RenderContext) ([]runtime.Object, error) {
 							common.DatabaseEnv(&ctx.Config),
 							common.DefaultEnv(&ctx.Config),
 						)),
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: pointer.Bool(false),
+						},
 						Command: []string{
 							"sh",
 							"-c",

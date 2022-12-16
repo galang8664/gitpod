@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package ports
 
@@ -94,9 +94,7 @@ func TestPortsConfig(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			gitpodAPI := gitpod.NewMockAPIInterface(ctrl)
-
-			service := NewConfigService(workspaceID, configService, gitpodAPI)
+			service := NewConfigService(workspaceID, configService)
 			updates, errors := service.Observe(context)
 
 			actual := &PortConfigTestExpectations{}

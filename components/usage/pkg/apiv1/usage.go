@@ -1,6 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package apiv1
 
@@ -368,14 +368,19 @@ func reconcileUsage(instances []db.WorkspaceInstanceForUsage, drafts []db.Usage,
 const usageDescriptionFromController = "Usage collected by automated system."
 
 func newUsageFromInstance(instance db.WorkspaceInstanceForUsage, pricer *WorkspacePricer, now time.Time) (db.Usage, error) {
+	stopTime := instance.StoppingTime
+	if !stopTime.IsSet() {
+		stopTime = instance.StoppedTime
+	}
+
 	draft := true
-	if instance.StoppingTime.IsSet() {
+	if stopTime.IsSet() {
 		draft = false
 	}
 
 	effectiveTime := now
-	if instance.StoppingTime.IsSet() {
-		effectiveTime = instance.StoppingTime.Time()
+	if stopTime.IsSet() {
+		effectiveTime = stopTime.Time()
 	}
 
 	usage := db.Usage{
@@ -472,11 +477,6 @@ func (s *UsageService) AddUsageCreditNote(ctx context.Context, req *v1.AddUsageC
 		return nil, status.Error(codes.InvalidArgument, "The description must not be empty.")
 	}
 
-	userId, err := uuid.Parse(req.UserId)
-	if err != nil {
-		return nil, fmt.Errorf("The user id is not a valid UUID. %w", err)
-	}
-
 	usage := db.Usage{
 		ID:            uuid.New(),
 		AttributionID: attributionId,
@@ -487,9 +487,15 @@ func (s *UsageService) AddUsageCreditNote(ctx context.Context, req *v1.AddUsageC
 		Draft:         false,
 	}
 
-	err = usage.SetCreditNoteMetaData(db.CreditNoteMetaData{UserId: userId.String()})
-	if err != nil {
-		return nil, err
+	if req.UserId != "" {
+		userId, err := uuid.Parse(req.UserId)
+		if err != nil {
+			return nil, fmt.Errorf("The user id is not a valid UUID. %w", err)
+		}
+		err = usage.SetCreditNoteMetaData(db.CreditNoteMetaData{UserId: userId.String()})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = db.InsertUsage(ctx, s.conn, usage)

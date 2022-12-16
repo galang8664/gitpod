@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package manager
 
@@ -46,7 +46,9 @@ type metrics struct {
 
 	// Counter
 	totalStartsCounterVec                     *prometheus.CounterVec
+	totalStartsFailureCounterVec              *prometheus.CounterVec
 	totalStopsCounterVec                      *prometheus.CounterVec
+	totalStopsFailureCounterVec               *prometheus.CounterVec
 	totalBackupCounterVec                     *prometheus.CounterVec
 	totalBackupFailureCounterVec              *prometheus.CounterVec
 	totalRestoreCounterVec                    *prometheus.CounterVec
@@ -108,12 +110,24 @@ func newMetrics(m *Manager) *metrics {
 			Name:      "workspace_starts_total",
 			Help:      "total number of workspaces started",
 		}, []string{"type", "class"}),
+		totalStartsFailureCounterVec: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsWorkspaceSubsystem,
+			Name:      "workspace_starts_failure_total",
+			Help:      "total number of workspaces that failed to start",
+		}, []string{"type", "class"}),
 		totalStopsCounterVec: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: metricsNamespace,
 			Subsystem: metricsWorkspaceSubsystem,
 			Name:      "workspace_stops_total",
 			Help:      "total number of workspaces stopped",
 		}, []string{"reason", "type", "class"}),
+		totalStopsFailureCounterVec: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsWorkspaceSubsystem,
+			Name:      "workspace_stops_failure_total",
+			Help:      "total number of workspaces failed to stop",
+		}, []string{"type", "class"}),
 		totalBackupCounterVec: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: metricsNamespace,
 			Subsystem: metricsWorkspaceSubsystem,
@@ -213,7 +227,9 @@ func (m *metrics) Register(reg prometheus.Registerer) error {
 		newTimeoutSettingsVec(m.manager),
 		newSubscriberQueueLevelVec(m.manager),
 		m.totalStartsCounterVec,
+		m.totalStartsFailureCounterVec,
 		m.totalStopsCounterVec,
+		m.totalStopsFailureCounterVec,
 		m.totalBackupCounterVec,
 		m.totalBackupFailureCounterVec,
 		m.totalRestoreCounterVec,
@@ -233,15 +249,23 @@ func (m *metrics) Register(reg prometheus.Registerer) error {
 	return nil
 }
 
-func (m *metrics) OnWorkspaceStarted(tpe api.WorkspaceType, class string) {
+func (m *metrics) OnWorkspaceStarted(tpe api.WorkspaceType, class string, success bool) {
 	nme := api.WorkspaceType_name[int32(tpe)]
 	counter, err := m.totalStartsCounterVec.GetMetricWithLabelValues(nme, class)
 	if err != nil {
 		log.WithError(err).WithField("type", tpe).Warn("cannot get counter for workspace start metric")
 		return
 	}
-
 	counter.Inc()
+
+	if !success {
+		counter, err = m.totalStartsFailureCounterVec.GetMetricWithLabelValues(nme, class)
+		if err != nil {
+			log.WithError(err).WithField("type", tpe).Warn("cannot get counter for workspace start failure metric")
+			return
+		}
+		counter.Inc()
+	}
 }
 
 func (m *metrics) OnChange(status *api.WorkspaceStatus) {
@@ -295,6 +319,15 @@ func (m *metrics) OnChange(status *api.WorkspaceStatus) {
 			return
 		}
 		counter.Inc()
+
+		if reason == "failed" {
+			counter, err = m.totalStopsFailureCounterVec.GetMetricWithLabelValues(tpe, status.Spec.Class)
+			if err != nil {
+				log.WithError(err).WithField("type", tpe).Warn("cannot get counter for workspace stop failure metric")
+				return
+			}
+			counter.Inc()
+		}
 		removeFromState = true
 	}
 }

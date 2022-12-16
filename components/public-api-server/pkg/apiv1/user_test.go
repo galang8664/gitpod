@@ -1,6 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package apiv1
 
@@ -58,6 +58,24 @@ func TestUserService_ListSSHKeys(t *testing.T) {
 		require.NoError(t, err)
 		requireEqualProto(t, &v1.ListSSHKeysResponse{
 			Keys: expected,
+		}, retrieved.Msg)
+	})
+}
+
+func TestUserService_GetGitToken(t *testing.T) {
+	t.Run("proxies request to server", func(t *testing.T) {
+		serverMock, client := setupUserService(t)
+
+		token := newGitToken(&protocol.Token{
+			Username: "John",
+		})
+
+		serverMock.EXPECT().GetToken(gomock.Any(), &protocol.GetTokenSearchOptions{Host: "github.com"}).Return(token, nil)
+
+		retrieved, err := client.GetGitToken(context.Background(), connect.NewRequest(&v1.GetGitTokenRequest{Host: "github.com"}))
+		require.NoError(t, err)
+		requireEqualProto(t, &v1.GetGitTokenResponse{
+			Token: gitTokenToAPIResponse(token),
 		}, retrieved.Msg)
 	})
 }
@@ -133,6 +151,32 @@ func newSSHKey(t *protocol.UserSSHPublicKeyValue) *protocol.UserSSHPublicKeyValu
 
 	if t.CreationTime != "" {
 		result.CreationTime = t.CreationTime
+	}
+
+	return result
+}
+
+func newGitToken(t *protocol.Token) *protocol.Token {
+	result := &protocol.Token{
+		ExpiryDate:   "2022-10-10T10:10:10.000Z",
+		IDToken:      uuid.New().String(),
+		RefreshToken: "",
+		Scopes:       []string{"public_repo", "repo", "user:email"},
+		UpdateDate:   "2022-10-10T10:10:10.000Z",
+		Username:     "john",
+		Value:        "gh_abcdefg123456789",
+	}
+
+	if t.IDToken != "" {
+		result.IDToken = t.IDToken
+	}
+
+	if t.Username != "" {
+		result.Username = t.Username
+	}
+
+	if len(t.Scopes) != 0 {
+		result.Scopes = t.Scopes
 	}
 
 	return result

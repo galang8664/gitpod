@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package server
 
@@ -176,6 +176,14 @@ func configmap(ctx *common.RenderContext) ([]runtime.Object, error) {
 		return nil
 	})
 
+	var withoutWorkspaceComponents bool
+	_ = ctx.WithExperimental(func(cfg *experimental.Config) error {
+		if cfg.WebApp != nil {
+			withoutWorkspaceComponents = cfg.WebApp.WithoutWorkspaceComponents
+		}
+		return nil
+	})
+
 	// todo(sje): all these values are configurable
 	scfg := ConfigSerialized{
 		Version:               ctx.VersionManifest.Version,
@@ -268,6 +276,7 @@ func configmap(ctx *common.RenderContext) ([]runtime.Object, error) {
 		WorkspaceClasses:               workspaceClasses,
 		InactivityPeriodForReposInDays: inactivityPeriodForReposInDays,
 		PATSigningKeyFile:              personalAccessTokenSigningKeyPath,
+		WithoutWorkspaceComponents:     withoutWorkspaceComponents,
 	}
 
 	fc, err := common.ToJSONString(scfg)

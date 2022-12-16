@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2022 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import React, { createContext, useContext, useState, useEffect } from "react";
@@ -17,13 +17,17 @@ interface FeatureFlagConfig {
 
 const FeatureFlagContext = createContext<{
     showUsageView: boolean;
+    isUsageBasedBillingEnabled: boolean;
     showUseLastSuccessfulPrebuild: boolean;
     usePublicApiTeamsService: boolean;
+    usePublicApiProjectsService: boolean;
     enablePersonalAccessTokens: boolean;
 }>({
     showUsageView: false,
+    isUsageBasedBillingEnabled: false,
     showUseLastSuccessfulPrebuild: false,
     usePublicApiTeamsService: false,
+    usePublicApiProjectsService: false,
     enablePersonalAccessTokens: false,
 });
 
@@ -34,8 +38,10 @@ const FeatureFlagContextProvider: React.FC = ({ children }) => {
     const location = useLocation();
     const team = getCurrentTeam(location, teams);
     const [showUsageView, setShowUsageView] = useState<boolean>(false);
+    const [isUsageBasedBillingEnabled, setIsUsageBasedBillingEnabled] = useState<boolean>(false);
     const [showUseLastSuccessfulPrebuild, setShowUseLastSuccessfulPrebuild] = useState<boolean>(false);
     const [usePublicApiTeamsService, setUsePublicApiTeamsService] = useState<boolean>(false);
+    const [usePublicApiProjectsService, setUsePublicApiProjectsService] = useState<boolean>(false);
     const [enablePersonalAccessTokens, setPersonalAccessTokensEnabled] = useState<boolean>(false);
 
     useEffect(() => {
@@ -43,8 +49,10 @@ const FeatureFlagContextProvider: React.FC = ({ children }) => {
         (async () => {
             const featureFlags: FeatureFlagConfig = {
                 usage_view: { defaultValue: false, setter: setShowUsageView },
+                isUsageBasedBillingEnabled: { defaultValue: false, setter: setIsUsageBasedBillingEnabled },
                 showUseLastSuccessfulPrebuild: { defaultValue: false, setter: setShowUseLastSuccessfulPrebuild },
                 publicApiExperimentalTeamsService: { defaultValue: false, setter: setUsePublicApiTeamsService },
+                publicApiExperimentalProjectsService: { defaultValue: false, setter: setUsePublicApiProjectsService },
                 personalAccessTokensEnabled: { defaultValue: false, setter: setPersonalAccessTokensEnabled },
             };
 
@@ -86,9 +94,11 @@ const FeatureFlagContextProvider: React.FC = ({ children }) => {
         <FeatureFlagContext.Provider
             value={{
                 showUsageView,
+                isUsageBasedBillingEnabled,
                 showUseLastSuccessfulPrebuild,
                 usePublicApiTeamsService,
                 enablePersonalAccessTokens,
+                usePublicApiProjectsService,
             }}
         >
             {children}
@@ -97,3 +107,7 @@ const FeatureFlagContextProvider: React.FC = ({ children }) => {
 };
 
 export { FeatureFlagContext, FeatureFlagContextProvider };
+
+export const useFeatureFlags = () => {
+    return useContext(FeatureFlagContext);
+};

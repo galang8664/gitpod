@@ -1,11 +1,11 @@
 /**
  * Copyright (c) 2021 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import dayjs from "dayjs";
-import { PrebuildWithStatus } from "@gitpod/gitpod-protocol";
+import { PrebuildWithStatus, Project } from "@gitpod/gitpod-protocol";
 import { useContext, useEffect, useState } from "react";
 import { useHistory, useLocation, useRouteMatch } from "react-router";
 import Header from "../components/Header";
@@ -14,12 +14,17 @@ import Spinner from "../icons/Spinner.svg";
 import { getGitpodService, gitpodHostUrl } from "../service/service";
 import { TeamsContext, getCurrentTeam } from "../teams/teams-context";
 import { shortCommitMessage } from "./render-utils";
+import { listAllProjects } from "../service/public-api";
+import { UserContext } from "../user-context";
+import { FeatureFlagContext } from "../contexts/FeatureFlagContext";
 
 export default function () {
     const history = useHistory();
     const location = useLocation();
 
     const { teams } = useContext(TeamsContext);
+    const { user } = useContext(UserContext);
+    const { usePublicApiProjectsService } = useContext(FeatureFlagContext);
     const team = getCurrentTeam(location, teams);
 
     const match = useRouteMatch<{ team: string; project: string; prebuildId: string }>(
@@ -37,9 +42,16 @@ export default function () {
             return;
         }
         (async () => {
-            const projects = !!team
-                ? await getGitpodService().server.getTeamProjects(team.id)
-                : await getGitpodService().server.getUserProjects();
+            let projects: Project[];
+            if (!!team) {
+                projects = usePublicApiProjectsService
+                    ? await listAllProjects({ teamId: team.id })
+                    : await getGitpodService().server.getTeamProjects(team.id);
+            } else {
+                projects = usePublicApiProjectsService
+                    ? await listAllProjects({ userId: user?.id })
+                    : await getGitpodService().server.getUserProjects();
+            }
 
             const project =
                 projectSlug && projects.find((p) => (!!p.slug ? p.slug === projectSlug : p.name === projectSlug));
@@ -156,39 +168,42 @@ export default function () {
             <Header title={renderTitle()} subtitle={renderSubtitle()} />
             <div className="app-container mt-8">
                 <PrebuildLogs workspaceId={prebuild?.info?.buildWorkspaceId}>
-                    {["aborted", "timeout", "failed"].includes(prebuild?.status || "") || !!prebuild?.error ? (
-                        <button
-                            className="flex items-center space-x-2"
-                            disabled={isRerunningPrebuild}
-                            onClick={rerunPrebuild}
-                        >
-                            {isRerunningPrebuild && (
-                                <img className="h-4 w-4 animate-spin filter brightness-150" src={Spinner} />
-                            )}
-                            <span>Rerun Prebuild ({prebuild?.info.branch})</span>
-                        </button>
-                    ) : ["building", "queued"].includes(prebuild?.status || "") ? (
+                    {["building", "queued"].includes(prebuild?.status || "") ? (
                         <button
                             className="danger flex items-center space-x-2"
                             disabled={isCancellingPrebuild}
                             onClick={cancelPrebuild}
                         >
                             {isCancellingPrebuild && (
-                                <img className="h-4 w-4 animate-spin filter brightness-150" src={Spinner} />
+                                <img alt="" className="h-4 w-4 animate-spin filter brightness-150" src={Spinner} />
                             )}
                             <span>Cancel Prebuild</span>
                         </button>
-                    ) : prebuild?.status === "available" ? (
-                        <a
-                            className="my-auto"
-                            href={gitpodHostUrl
-                                .withContext(`open-prebuild/${prebuild?.info.id}/${prebuild?.info.changeUrl}`)
-                                .toString()}
-                        >
-                            <button>New Workspace (with this prebuild)</button>
-                        </a>
                     ) : (
-                        <button disabled={true}>New Workspace (with this prebuild)</button>
+                        <>
+                            <button
+                                className="secondary flex items-center space-x-2"
+                                disabled={isRerunningPrebuild}
+                                onClick={rerunPrebuild}
+                            >
+                                {isRerunningPrebuild && (
+                                    <img alt="" className="h-4 w-4 animate-spin filter brightness-150" src={Spinner} />
+                                )}
+                                <span>Rerun Prebuild ({prebuild?.info.branch})</span>
+                            </button>
+                            {prebuild?.status === "available" ? (
+                                <a
+                                    className="my-auto"
+                                    href={gitpodHostUrl
+                                        .withContext(`open-prebuild/${prebuild?.info.id}/${prebuild?.info.changeUrl}`)
+                                        .toString()}
+                                >
+                                    <button>New Workspace (with this prebuild)</button>
+                                </a>
+                            ) : (
+                                <button disabled={true}>New Workspace (with this prebuild)</button>
+                            )}
+                        </>
                     )}
                 </PrebuildLogs>
             </div>

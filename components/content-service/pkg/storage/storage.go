@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 //go:generate ./generate-mock.sh
 
@@ -14,6 +14,8 @@ import (
 
 	"golang.org/x/xerrors"
 
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gitpod-io/gitpod/common-go/log"
 	config "github.com/gitpod-io/gitpod/content-service/api/config"
 	"github.com/gitpod-io/gitpod/content-service/pkg/archive"
@@ -56,7 +58,7 @@ type InstanceObjectNamer interface {
 // BlobObjectNamer provides names for blob objects
 type BlobObjectNamer interface {
 	// BlobObject returns a blob's object name
-	BlobObject(name string) (string, error)
+	BlobObject(userID, name string) (string, error)
 }
 
 // PresignedAccess provides presigned URLs to access remote storage objects
@@ -80,7 +82,7 @@ type PresignedAccess interface {
 	DeleteObject(ctx context.Context, bucket string, query *DeleteObjectQuery) error
 
 	// DeleteBucket deletes a bucket
-	DeleteBucket(ctx context.Context, bucket string) error
+	DeleteBucket(ctx context.Context, userID, bucket string) error
 
 	// ObjectHash gets a hash value of an object
 	ObjectHash(ctx context.Context, bucket string, obj string) (string, error)
@@ -225,6 +227,16 @@ func NewDirectAccess(c *config.StorageConfig) (DirectAccess, error) {
 		return newDirectGCPAccess(c.GCloudConfig, stage)
 	case config.MinIOStorage:
 		return newDirectMinIOAccess(c.MinIOConfig)
+	case config.S3Storage:
+		cfg, err := awsconfig.LoadDefaultConfig(context.TODO(), awsconfig.WithSharedConfigFiles([]string{c.S3Config.CredentialsFile}))
+		if err != nil {
+			return nil, err
+		}
+
+		cfg.Region = c.S3Config.Region
+		return newDirectS3Access(s3.NewFromConfig(cfg), S3Config{
+			Bucket: c.S3Config.Bucket,
+		}), nil
 	default:
 		return &DirectNoopStorage{}, nil
 	}
@@ -242,6 +254,16 @@ func NewPresignedAccess(c *config.StorageConfig) (PresignedAccess, error) {
 		return newPresignedGCPAccess(c.GCloudConfig, stage)
 	case config.MinIOStorage:
 		return newPresignedMinIOAccess(c.MinIOConfig)
+	case config.S3Storage:
+		cfg, err := awsconfig.LoadDefaultConfig(context.TODO(), awsconfig.WithSharedConfigFiles([]string{c.S3Config.CredentialsFile}))
+		if err != nil {
+			return nil, err
+		}
+
+		cfg.Region = c.S3Config.Region
+		return NewPresignedS3Access(s3.NewFromConfig(cfg), S3Config{
+			Bucket: c.S3Config.Bucket,
+		}), nil
 	default:
 		log.Warnf("falling back to noop presigned storage access. Is this intentional? (storage kind: %s)", c.Kind)
 		return &PresignedNoopStorage{}, nil

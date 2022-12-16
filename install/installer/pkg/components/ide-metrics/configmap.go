@@ -1,6 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package ide_metrics
 
@@ -10,6 +10,7 @@ import (
 
 	"github.com/gitpod-io/gitpod/ide-metrics-api/config"
 	"github.com/gitpod-io/gitpod/installer/pkg/common"
+	"github.com/prometheus/client_golang/prometheus"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -182,6 +183,44 @@ func configmap(ctx *common.RenderContext) ([]runtime.Object, error) {
 					AllowValues: []string{"*"},
 				},
 			},
+		}, {
+			Name: "grpc_client_started_total",
+			Help: "Total number of RPCs started on the client.",
+			Labels: []config.LabelAllowList{
+				{
+					Name:        "grpc_method",
+					AllowValues: []string{"*"},
+				},
+				{
+					Name:        "grpc_service",
+					AllowValues: []string{"*"},
+				},
+				{
+					Name:        "grpc_type",
+					AllowValues: []string{"*"},
+				},
+			},
+		}, {
+			Name: "grpc_client_handled_total",
+			Help: "Total number of RPCs completed by the client, regardless of success or failure.",
+			Labels: []config.LabelAllowList{
+				{
+					Name:        "grpc_method",
+					AllowValues: []string{"*"},
+				},
+				{
+					Name:        "grpc_service",
+					AllowValues: []string{"*"},
+				},
+				{
+					Name:        "grpc_type",
+					AllowValues: []string{"*"},
+				},
+				{
+					Name:        "grpc_code",
+					AllowValues: []string{"*"},
+				},
+			},
 		},
 	}
 
@@ -245,6 +284,35 @@ func configmap(ctx *common.RenderContext) ([]runtime.Object, error) {
 					AllowValues: []string{"web", "desktop"},
 				},
 			},
+		},
+		{
+			Name:    "supervisor_initializer_bytes_second",
+			Help:    "initializer speed in bytes per second",
+			Buckets: prometheus.ExponentialBuckets(1024*1024, 2, 12),
+			Labels: []config.LabelAllowList{
+				{
+					Name:        "kind",
+					AllowValues: []string{"*"},
+				},
+			},
+		}, {
+			Name: "grpc_client_handling_seconds",
+			Help: "Histogram of response latency (seconds) of the gRPC until it is finished by the application.",
+			Labels: []config.LabelAllowList{
+				{
+					Name:        "grpc_type",
+					AllowValues: []string{"*"},
+				},
+				{
+					Name:        "grpc_service",
+					AllowValues: []string{"*"},
+				},
+				{
+					Name:        "grpc_method",
+					AllowValues: []string{"*"},
+				},
+			},
+			Buckets: []float64{0.1, 0.2, 0.5, 1, 2, 5, 10},
 		},
 	}
 

@@ -1,5 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
-// Licensed under the MIT License. See License-MIT.txt in the project root for license information.
+/// Licensed under the GNU Affero General Public License (AGPL).
+// See License.AGPL.txt in the project root for license information.
 
 package iam
 
@@ -30,6 +31,7 @@ func deployment(ctx *common.RenderContext) ([]runtime.Object, error) {
 		return nil, err
 	}
 
+	databaseSecretVolume, databaseSecretMount, _ := common.DatabaseEnvSecret(ctx.Config)
 	volumes := []corev1.Volume{
 		{
 			Name: configmapVolume,
@@ -41,6 +43,7 @@ func deployment(ctx *common.RenderContext) ([]runtime.Object, error) {
 				},
 			},
 		},
+		databaseSecretVolume,
 	}
 	volumeMounts := []corev1.VolumeMount{
 		{
@@ -49,6 +52,7 @@ func deployment(ctx *common.RenderContext) ([]runtime.Object, error) {
 			MountPath: configMountPath,
 			SubPath:   configJSONFilename,
 		},
+		databaseSecretMount,
 	}
 
 	labels := common.CustomizeLabel(ctx, Component, common.TypeMetaDeployment)

@@ -1,6 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package server
 
@@ -55,6 +55,7 @@ func Start(cfg Config, version string) error {
 		Password: os.Getenv("DB_PASSWORD"),
 		Host:     net.JoinHostPort(os.Getenv("DB_HOST"), os.Getenv("DB_PORT")),
 		Database: "gitpod",
+		CaCert:   os.Getenv("DB_CA_CERT"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to establish database connection: %w", err)

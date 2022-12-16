@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2020 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 const URL = require("url").URL || window.URL;
@@ -91,6 +91,10 @@ export class GitpodHostUrl {
 
     asDashboard(): GitpodHostUrl {
         return this.with((url) => ({ pathname: "/" }));
+    }
+
+    asBilling(): GitpodHostUrl {
+        return this.with((url) => ({ pathname: "/billing" }));
     }
 
     asLogin(): GitpodHostUrl {

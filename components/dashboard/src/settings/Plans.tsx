@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2021 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import React, { useState, useEffect, useContext } from "react";
@@ -25,6 +25,7 @@ import { UserContext } from "../user-context";
 import Tooltip from "../components/Tooltip";
 import { PaymentContext } from "../payment-context";
 import { PageWithSettingsSubMenu } from "./PageWithSettingsSubMenu";
+import { FeatureFlagContext } from "../contexts/FeatureFlagContext";
 
 type PlanWithOriginalPrice = Plan & { originalPrice?: number };
 type Pending = { pendingSince: number };
@@ -45,6 +46,7 @@ type TeamClaimModal =
 export default function () {
     const { user, userBillingMode } = useContext(UserContext);
     const { currency, setCurrency, isStudent, isChargebeeCustomer } = useContext(PaymentContext);
+    const { isUsageBasedBillingEnabled } = useContext(FeatureFlagContext);
     const [accountStatement, setAccountStatement] = useState<AccountStatement>();
     const [availableCoupons, setAvailableCoupons] = useState<PlanCoupon[]>();
     const [appliedCoupons, setAppliedCoupons] = useState<PlanCoupon[]>();
@@ -435,7 +437,7 @@ export default function () {
             ) : undefined;
         planCards.push(
             <PlanCard
-                isDisabled={!!assignedTs || pendingChargebeeCallback}
+                isDisabled={!!isUsageBasedBillingEnabled || !!assignedTs || pendingChargebeeCallback}
                 plan={applyCoupons(personalPlan, appliedCoupons)}
                 isCurrent={true}
                 bottomLabel={bottomLabel}
@@ -474,7 +476,7 @@ export default function () {
         }
         planCards.push(
             <PlanCard
-                isDisabled={!!assignedTs || pendingChargebeeCallback}
+                isDisabled={!!isUsageBasedBillingEnabled || !!assignedTs || pendingChargebeeCallback}
                 plan={targetPlan}
                 isCurrent={false}
                 onUpgrade={onUpgrade}
@@ -505,7 +507,7 @@ export default function () {
             ) : undefined;
         planCards.push(
             <PlanCard
-                isDisabled={!!assignedTs || pendingChargebeeCallback}
+                isDisabled={!!isUsageBasedBillingEnabled || !!assignedTs || pendingChargebeeCallback}
                 plan={applyCoupons(professionalPlan, appliedCoupons)}
                 isCurrent={true}
                 bottomLabel={bottomLabel}
@@ -545,7 +547,7 @@ export default function () {
         }
         planCards.push(
             <PlanCard
-                isDisabled={!!assignedTs || pendingChargebeeCallback}
+                isDisabled={!!isUsageBasedBillingEnabled || !!assignedTs || pendingChargebeeCallback}
                 plan={targetPlan}
                 isCurrent={!!assignedProfessionalTs}
                 onUpgrade={onUpgrade}
@@ -583,7 +585,7 @@ export default function () {
             ) : undefined;
         planCards.push(
             <PlanCard
-                isDisabled={!!assignedTs || pendingChargebeeCallback}
+                isDisabled={!!isUsageBasedBillingEnabled || !!assignedTs || pendingChargebeeCallback}
                 plan={applyCoupons(studentUnleashedPlan, appliedCoupons)}
                 isCurrent={true}
                 bottomLabel={bottomLabel}
@@ -599,7 +601,7 @@ export default function () {
             ) : undefined;
         planCards.push(
             <PlanCard
-                isDisabled={!!assignedTs || pendingChargebeeCallback}
+                isDisabled={!!isUsageBasedBillingEnabled || !!assignedTs || pendingChargebeeCallback}
                 plan={applyCoupons(unleashedPlan, appliedCoupons)}
                 isCurrent={true}
                 bottomLabel={bottomLabel}
@@ -618,7 +620,7 @@ export default function () {
         }
         planCards.push(
             <PlanCard
-                isDisabled={!!assignedTs || pendingChargebeeCallback}
+                isDisabled={!!isUsageBasedBillingEnabled || !!assignedTs || pendingChargebeeCallback}
                 plan={targetPlan}
                 isCurrent={!!isUnleashedTsAssigned}
                 onUpgrade={onUpgrade}
@@ -629,87 +631,94 @@ export default function () {
         );
     }
 
-    const showPlans = userBillingMode && userBillingMode.mode === "chargebee";
     return (
         <div>
             <PageWithSettingsSubMenu title="Plans" subtitle="Manage account usage and billing.">
-                {showPlans && (
-                    <div className="w-full text-center">
-                        <p className="text-xl text-gray-500">
-                            You are currently using the{" "}
-                            <span className="font-bold">
-                                {Plans.getById(assignedTs?.planId)?.name || currentPlan.name}
-                            </span>{" "}
-                            plan.
-                        </p>
-                        {!assignedTs && (
-                            <p className="text-base w-96 m-auto">
-                                Upgrade your plan to get more hours and more parallel workspaces.
-                            </p>
-                        )}
-                        <Tooltip
-                            content={`Current billing cycle: ${guessCurrentBillingCycle(currentPlan, accountStatement)
-                                .map((d) => d.toLocaleDateString())
-                                .join(" - ")}`}
-                        >
-                            <p className="mt-2 font-semibold text-gray-500">
-                                Remaining hours:{" "}
-                                {typeof accountStatement?.remainingHours === "number"
-                                    ? Math.floor(accountStatement.remainingHours * 10) / 10
-                                    : accountStatement?.remainingHours}
-                            </p>
-                        </Tooltip>
-                        {typeof accountStatement?.remainingHours === "number" &&
-                        typeof currentPlan.hoursPerMonth === "number" ? (
-                            <progress
-                                value={currentPlan.hoursPerMonth - accountStatement.remainingHours}
-                                max={currentPlan.hoursPerMonth}
-                            />
-                        ) : (
-                            <progress value="0" max="100" />
-                        )}
-                        <p className="text-sm">
-                            <a
-                                className={`gp-link ${isChargebeeCustomer ? "" : "invisible"}`}
-                                href="javascript:void(0)"
-                                onClick={() => {
-                                    ChargebeeClient.getOrCreate().then((chargebeeClient) =>
-                                        chargebeeClient.openPortal(),
-                                    );
-                                }}
-                            >
-                                Billing
-                            </a>
-                            {!!accountStatement && Plans.isFreePlan(currentPlan.chargebeeId) && (
-                                <span className="pl-6">
-                                    {currency === "EUR" ? (
-                                        <>
-                                            € /{" "}
-                                            <a
-                                                className="text-blue-light hover:underline"
-                                                href="javascript:void(0)"
-                                                onClick={() => setCurrency("USD")}
-                                            >
-                                                $
-                                            </a>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <a
-                                                className="text-blue-light hover:underline"
-                                                href="javascript:void(0)"
-                                                onClick={() => setCurrency("EUR")}
-                                            >
-                                                €
-                                            </a>{" "}
-                                            / $
-                                        </>
-                                    )}
-                                </span>
-                            )}
-                        </p>
-                    </div>
+                {isUsageBasedBillingEnabled && (
+                    <Alert type="message" className="mb-4">
+                        To access{" "}
+                        <a className="gp-link" href="https://www.gitpod.io/docs/configure/workspaces/workspace-classes">
+                            large workspaces
+                        </a>{" "}
+                        and{" "}
+                        <a className="gp-link" href="https://www.gitpod.io/docs/configure/billing/pay-as-you-go">
+                            pay-as-you-go
+                        </a>
+                        , first cancel your existing plan. Existing plans will keep working until the end of March,
+                        2023.
+                    </Alert>
                 )}
+                <div className="w-full text-center">
+                    <p className="text-xl text-gray-500">
+                        You are currently using the{" "}
+                        <span className="font-bold">{Plans.getById(assignedTs?.planId)?.name || currentPlan.name}</span>{" "}
+                        plan.
+                    </p>
+                    {!isUsageBasedBillingEnabled && !assignedTs && (
+                        <p className="text-base w-96 m-auto">
+                            Upgrade your plan to get more hours and more parallel workspaces.
+                        </p>
+                    )}
+                    <Tooltip
+                        content={`Current billing cycle: ${guessCurrentBillingCycle(currentPlan, accountStatement)
+                            .map((d) => d.toLocaleDateString())
+                            .join(" - ")}`}
+                    >
+                        <p className="mt-2 font-semibold text-gray-500">
+                            Remaining hours:{" "}
+                            {typeof accountStatement?.remainingHours === "number"
+                                ? Math.floor(accountStatement.remainingHours * 10) / 10
+                                : accountStatement?.remainingHours}
+                        </p>
+                    </Tooltip>
+                    {typeof accountStatement?.remainingHours === "number" &&
+                    typeof currentPlan.hoursPerMonth === "number" ? (
+                        <progress
+                            value={currentPlan.hoursPerMonth - accountStatement.remainingHours}
+                            max={currentPlan.hoursPerMonth}
+                        />
+                    ) : (
+                        <progress value="0" max="100" />
+                    )}
+                    <p className="text-sm">
+                        <a
+                            className={`gp-link ${isChargebeeCustomer ? "" : "invisible"}`}
+                            href="javascript:void(0)"
+                            onClick={() => {
+                                ChargebeeClient.getOrCreate().then((chargebeeClient) => chargebeeClient.openPortal());
+                            }}
+                        >
+                            Billing
+                        </a>
+                        {!!accountStatement && Plans.isFreePlan(currentPlan.chargebeeId) && (
+                            <span className="pl-6">
+                                {currency === "EUR" ? (
+                                    <>
+                                        € /{" "}
+                                        <a
+                                            className="text-blue-light hover:underline"
+                                            href="javascript:void(0)"
+                                            onClick={() => setCurrency("USD")}
+                                        >
+                                            $
+                                        </a>
+                                    </>
+                                ) : (
+                                    <>
+                                        <a
+                                            className="text-blue-light hover:underline"
+                                            href="javascript:void(0)"
+                                            onClick={() => setCurrency("EUR")}
+                                        >
+                                            €
+                                        </a>{" "}
+                                        / $
+                                    </>
+                                )}
+                            </span>
+                        )}
+                    </p>
+                </div>
                 <div className="mt-4 flex justify-center space-x-3 2xl:space-x-7">{planCards}</div>
                 {assignedTs && userBillingMode?.mode === "chargebee" && !!userBillingMode.teamNames && (
                     <Alert type="info" className="mt-10 mx-auto">
@@ -717,13 +726,6 @@ export default function () {
                         <ul>{userBillingMode.teamNames.join(", ")}</ul>
                     </Alert>
                 )}
-                <InfoBox className="w-2/3 mt-14 mx-auto">
-                    If you are interested in purchasing a plan for a team, purchase a Team plan with one centralized
-                    billing.{" "}
-                    <a className="underline" href="https://www.gitpod.io/docs/teams/">
-                        Learn more
-                    </a>
-                </InfoBox>
                 {!!confirmUpgradeToPlan && (
                     // TODO: Use title and buttons props
                     <Modal visible={true} onClose={() => setConfirmUpgradeToPlan(undefined)}>
@@ -875,7 +877,7 @@ interface PlanCardProps {
 function PlanCard(p: PlanCardProps) {
     return (
         <SelectableCard
-            className="w-44 2xl:w-56"
+            className={`w-44 2xl:w-56 ${p.isDisabled ? "pointer-events-none" : ""}`}
             title={p.plan.name.toUpperCase()}
             selected={p.isCurrent}
             onClick={() => {}}

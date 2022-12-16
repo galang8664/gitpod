@@ -1,6 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package apiv1
 
@@ -221,6 +221,31 @@ func TestReconcile(t *testing.T) {
 			UserAvatarURL:  instance.UserAvatarURL,
 		}))
 		require.EqualValues(t, expectedUsage, updates[0])
+	})
+
+	t.Run("handles instances without stopping but stopped time", func(t *testing.T) {
+		instance := db.WorkspaceInstanceForUsage{
+			ID:          uuid.New(),
+			WorkspaceID: dbtest.GenerateWorkspaceID(),
+			OwnerID:     uuid.New(),
+			ProjectID: sql.NullString{
+				String: "my-project",
+				Valid:  true,
+			},
+			WorkspaceClass:     db.WorkspaceClass_Default,
+			Type:               db.WorkspaceType_Regular,
+			UsageAttributionID: db.NewTeamAttributionID(uuid.New().String()),
+			StartedTime:        db.NewVarCharTime(now.Add(1 * time.Minute)),
+			StoppedTime:        db.NewVarCharTime(now.Add(2 * time.Minute)),
+		}
+
+		inserts, updates, err := reconcileUsage([]db.WorkspaceInstanceForUsage{instance}, []db.Usage{}, pricer, now)
+		require.NoError(t, err)
+		require.Len(t, inserts, 1)
+		require.Len(t, updates, 0)
+
+		require.EqualValues(t, db.NewCreditCents(0.17), inserts[0].CreditCents)
+		require.EqualValues(t, instance.StoppedTime, inserts[0].EffectiveTime)
 	})
 }
 

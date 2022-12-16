@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2021 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import Alert from "./Alert";
@@ -20,7 +20,7 @@ export default function ConfirmationModal(props: {
     onConfirm: () => void;
 }) {
     const children: React.ReactChild[] = [
-        <p key="areYouSure" className="mt-3 mb-3 text-base text-gray-500">
+        <p key="areYouSure" className="mb-3 text-base text-gray-500">
             {props.areYouSureText}
         </p>,
     ];

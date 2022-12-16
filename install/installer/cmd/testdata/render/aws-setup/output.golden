@@ -158,6 +158,9 @@ spec:
               component: server
         - podSelector:
             matchLabels:
+              component: slow-server
+        - podSelector:
+            matchLabels:
               component: ws-manager
   podSelector:
     matchLabels:
@@ -570,31 +573,6 @@ spec:
   selfSigned: {}
 status: {}
 ---
-# cert-manager.io/v1/Certificate builtin-registry-certs
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  creationTimestamp: null
-  labels:
-    app: gitpod
-    component: docker-registry
-  name: builtin-registry-certs
-  namespace: default
-spec:
-  dnsNames:
-  - registry.default.svc.cluster.local
-  duration: 2160h0m0s
-  issuerRef:
-    group: cert-manager.io
-    kind: Issuer
-    name: ca-issuer
-  secretName: builtin-registry-certs
-  secretTemplate:
-    labels:
-      app: gitpod
-      component: docker-registry
-status: {}
----
 # cert-manager.io/v1/Certificate builtin-registry-facade-cert
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -812,18 +790,6 @@ metadata:
   name: dbinit
   namespace: default
 ---
-# v1/ServiceAccount docker-registry
-apiVersion: v1
-automountServiceAccountToken: true
-kind: ServiceAccount
-metadata:
-  creationTimestamp: null
-  labels:
-    app: gitpod
-    component: docker-registry
-  name: docker-registry
-  namespace: default
----
 # v1/ServiceAccount gitpod
 apiVersion: v1
 automountServiceAccountToken: true
@@ -972,6 +938,18 @@ automountServiceAccountToken: true
 secrets:
   - name: messagebus
 ---
+# v1/ServiceAccount refresh-credential
+apiVersion: v1
+automountServiceAccountToken: true
+kind: ServiceAccount
+metadata:
+  creationTimestamp: null
+  labels:
+    app: gitpod
+    component: refresh-credential
+  name: refresh-credential
+  namespace: default
+---
 # v1/ServiceAccount registry-facade
 apiVersion: v1
 automountServiceAccountToken: true
@@ -1055,22 +1033,6 @@ metadata:
     component: ws-proxy
   name: ws-proxy
   namespace: default
----
-# v1/Secret builtin-registry-auth
-apiVersion: v1
-data:
-  .dockerconfigjson: eyJhdXRocyI6eyJyZWdpc3RyeS5naXRwb2QuZXhhbXBsZS5jb20iOnsiYXV0aCI6ImVGTmxaRXBwUkdkS1VWRm5ORUpyVnpWNFMzVTZRMWMwUTFKQ2FtazJVakJpUjBjNE1XZDVSWGs9In19fQ==
-  password: Q1c0Q1JCamk2UjBiR0c4MWd5RXk=
-  user: eFNlZEppRGdKUVFnNEJrVzV4S3U=
-kind: Secret
-metadata:
-  creationTimestamp: null
-  labels:
-    app: gitpod
-    component: docker-registry
-  name: builtin-registry-auth
-  namespace: default
-type: kubernetes.io/dockerconfigjson
 ---
 # v1/Secret load-definition
 # Source: rabbitmq/charts/rabbitmq/templates/secrets.yaml
@@ -1165,24 +1127,6 @@ type: Opaque
 stringData:
   password: uq4KxOLtrA-QsDTfuwQ-
   username: gitpod
----
-# v1/Secret registry-secret
-# Source: docker-registry/charts/docker-registry/templates/secret.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: registry-secret
-  namespace: default
-  labels:
-    app: docker-registry
-    chart: docker-registry-1.16.0
-    heritage: Helm
-    release: docker-registry
-type: Opaque
-data:
-  haSharedSecret: "ZTI1UHRYNk1MOGdDVzMxbWl3MFQ="
-  proxyUsername: ""
-  proxyPassword: ""
 ---
 # v1/ConfigMap agent-smith
 apiVersion: v1
@@ -1291,7 +1235,7 @@ data:
           "maxSizeBytes": 1073741824
         }
       },
-      "dockerAuth": "/mnt/pull-secret.json",
+      "dockerAuth": "/mnt/pull-secret/pull-secret.json",
       "pprofAddr": "127.0.0.1:6060",
       "prometheusAddr": "127.0.0.1:9500",
       "readinessProbeAddr": ":8086"
@@ -1315,22 +1259,24 @@ data:
       },
       "storage": {
         "stage": "",
-        "kind": "minio",
+        "kind": "s3",
         "gcloud": {
           "credentialsFile": "",
           "region": "",
           "projectId": ""
         },
         "minio": {
-          "endpoint": "s3.amazonaws.com",
+          "endpoint": "",
           "accessKey": "",
-          "accessKeyFile": "/mnt/secrets/storage/accessKeyId",
+          "accessKeyFile": "",
           "secretKey": "",
-          "secretKeyFile": "/mnt/secrets/storage/secretAccessKey",
-          "secure": true,
+          "secretKeyFile": "",
+          "region": ""
+        },
+        "s3": {
+          "bucket": "s3-bucket",
           "region": "eu-west-2",
-          "parallelUpload": 100,
-          "bucket": "s3-bucket"
+          "credentialsFile": "/mnt/secrets/storage/credentials"
         },
         "blobQuota": 5368709120
       }
@@ -1351,7 +1297,7 @@ data:
     -- 00-create-and-init-sessions-db.sql
 
     -- Copyright (c) 2020 Gitpod GmbH. All rights reserved.
-    -- Licensed under the MIT License. See License-MIT.txt in the project root for license information.
+    -- Licensed under the GNU Affero General Public License (AGPL). See License.AGPL.txt in the project root for license information.
 
     -- must be idempotent
 
@@ -1388,7 +1334,15 @@ data:
       kind: secret
       name: https-certificates
     containerRegistry:
-      inCluster: true
+      external:
+        certificate:
+          kind: secret
+          name: aws-ecr-credential
+        credentials:
+          kind: secret
+          name: aws-storage
+        url: 012345678969.dkr.ecr.eu-west-2.amazonaws.com
+      inCluster: false
       privateBaseImageAllowList: []
       s3storage:
         bucket: s3-container-registry
@@ -1509,6 +1463,9 @@ data:
           "public-api-server": {
             "version": "test"
           },
+          "refreshCredential": {
+            "version": "test"
+          },
           "registryFacade": {
             "version": "test"
           },
@@ -1597,6 +1554,9 @@ data:
               },
               "jbBackendPluginLatest": {
                 "version": "test"
+              },
+              "jbLauncher": {
+                "version": "test"
               }
             }
           },
@@ -1636,46 +1596,6 @@ metadata:
 apiVersion: v1
 data:
   app.yaml: |
-    apiVersion: cert-manager.io/v1
-    kind: Certificate
-    metadata:
-      creationTimestamp: null
-      labels:
-        app: gitpod
-        component: docker-registry
-      name: builtin-registry-certs
-      namespace: default
-    ---
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: RoleBinding
-    metadata:
-      creationTimestamp: null
-      labels:
-        app: gitpod
-        component: docker-registry
-      name: docker-registry
-      namespace: default
-    ---
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      creationTimestamp: null
-      labels:
-        app: gitpod
-        component: docker-registry
-      name: builtin-registry-auth
-      namespace: default
-    ---
-    apiVersion: v1
-    kind: ServiceAccount
-    metadata:
-      creationTimestamp: null
-      labels:
-        app: gitpod
-        component: docker-registry
-      name: docker-registry
-      namespace: default
-    ---
     apiVersion: cert-manager.io/v1
     kind: Issuer
     metadata:
@@ -2149,7 +2069,7 @@ data:
     kind: Deployment
     metadata:
       annotations:
-        gitpod.io/checksum_config: cb4cc24849de9562a8146bc14338c6a2298f3056b17f1cee5f08c1475327ff57
+        gitpod.io/checksum_config: 7346723d23891c253f282241ed24e225e16dd2ddafa9b7c90d1da928a4923f4b
       creationTimestamp: null
       labels:
         app: gitpod
@@ -3269,51 +3189,53 @@ data:
       namespace: default
     ---
     apiVersion: v1
-    kind: Secret
-    metadata:
-      creationTimestamp: null
-      labels:
-        app: docker-registry
-        chart: docker-registry-1.16.0
-        heritage: Helm
-        release: docker-registry
-      name: registry-secret
-      namespace: default
-    ---
-    apiVersion: v1
     kind: ConfigMap
     metadata:
       creationTimestamp: null
       labels:
-        app: docker-registry
-        chart: docker-registry-1.16.0
-        heritage: Helm
-        release: docker-registry
-      name: registry-config
+        app: gitpod
+        component: refresh-credential
+      name: refresh-credential
+      namespace: default
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: gitpod
+        component: refresh-credential
+      name: refresh-credential
+      namespace: default
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: gitpod
+        component: refresh-credential
+      name: refresh-credential
+      namespace: default
+    ---
+    apiVersion: batch/v1
+    kind: CronJob
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: gitpod
+        component: refresh-credential
+      name: refresh-credential
       namespace: default
     ---
     apiVersion: v1
-    kind: Service
+    kind: ServiceAccount
     metadata:
       creationTimestamp: null
       labels:
-        app: docker-registry
-        chart: docker-registry-1.16.0
-        heritage: Helm
-        release: docker-registry
-      name: registry
-      namespace: default
-    ---
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
-      creationTimestamp: null
-      labels:
-        app: docker-registry
-        chart: docker-registry-1.16.0
-        heritage: Helm
-        release: docker-registry
-      name: registry
+        app: gitpod
+        component: refresh-credential
+      name: refresh-credential
       namespace: default
     ---
     apiVersion: networking.k8s.io/v1
@@ -3493,7 +3415,8 @@ data:
             "address": "0.0.0.0:9002"
           }
         }
-      }
+      },
+      "databaseConfigPath": "/secrets/database-config"
     }
 kind: ConfigMap
 metadata:
@@ -3520,7 +3443,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/clion:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/clion:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "code": {
             "orderKey": "00",
@@ -3528,7 +3459,7 @@ data:
             "type": "browser",
             "logo": "https://ide.gitpod.example.com/image/ide-logo/vscode.svg",
             "label": "Browser",
-            "image": "eu.gcr.io/gitpod-core-dev/build/ide/code:commit-4dabe593cb0c05e25ded443109a3683a22d544ba",
+            "image": "eu.gcr.io/gitpod-core-dev/build/ide/code:commit-73b9682c5040a9fec5a02e066aa48faa635f5ca5",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/code:nightly"
           },
           "code-desktop": {
@@ -3547,7 +3478,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/goland:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/goland:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "intellij": {
             "orderKey": "04",
@@ -3557,7 +3496,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/intellij:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/intellij:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "phpstorm": {
             "orderKey": "07",
@@ -3567,7 +3514,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/phpstorm:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/phpstorm:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "pycharm": {
             "orderKey": "06",
@@ -3577,7 +3532,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/pycharm:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/pycharm:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "rider": {
             "orderKey": "10",
@@ -3587,7 +3550,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/rider:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/rider:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "rubymine": {
             "orderKey": "08",
@@ -3597,7 +3568,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/rubymine:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/rubymine:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "webstorm": {
             "orderKey": "09",
@@ -3607,7 +3586,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/webstorm:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/webstorm:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           }
         },
         "defaultIde": "code",
@@ -4394,6 +4381,67 @@ data:
                 "defaultValue": ""
               }
             ]
+          },
+          {
+            "name": "grpc_client_started_total",
+            "help": "Total number of RPCs started on the client.",
+            "labels": [
+              {
+                "name": "grpc_method",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_service",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_type",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              }
+            ]
+          },
+          {
+            "name": "grpc_client_handled_total",
+            "help": "Total number of RPCs completed by the client, regardless of success or failure.",
+            "labels": [
+              {
+                "name": "grpc_method",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_service",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_type",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_code",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              }
+            ]
           }
         ],
         "histogramMetrics": [
@@ -4518,6 +4566,69 @@ data:
               5,
               10
             ]
+          },
+          {
+            "name": "supervisor_initializer_bytes_second",
+            "help": "initializer speed in bytes per second",
+            "labels": [
+              {
+                "name": "kind",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              }
+            ],
+            "buckets": [
+              1048576,
+              2097152,
+              4194304,
+              8388608,
+              16777216,
+              33554432,
+              67108864,
+              134217728,
+              268435456,
+              536870912,
+              1073741824,
+              2147483648
+            ]
+          },
+          {
+            "name": "grpc_client_handling_seconds",
+            "help": "Histogram of response latency (seconds) of the gRPC until it is finished by the application.",
+            "labels": [
+              {
+                "name": "grpc_type",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_service",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_method",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              }
+            ],
+            "buckets": [
+              0.1,
+              0.2,
+              0.5,
+              1,
+              2,
+              5,
+              10
+            ]
           }
         ],
         "errorReporting": {
@@ -4584,10 +4695,10 @@ data:
             "key": "/wsman-certs/tls.key"
           }
         },
-        "pullSecret": "builtin-registry-auth",
-        "pullSecretFile": "/config/pull-secret.json",
-        "baseImageRepository": "registry.gitpod.example.com/base-images",
-        "workspaceImageRepository": "registry.gitpod.example.com/workspace-images",
+        "pullSecret": "aws-ecr-credential",
+        "pullSecretFile": "/config/pull-secret/pull-secret.json",
+        "baseImageRepository": "012345678969.dkr.ecr.eu-west-2.amazonaws.com/base-images",
+        "workspaceImageRepository": "012345678969.dkr.ecr.eu-west-2.amazonaws.com/workspace-images",
         "builderImage": "eu.gcr.io/gitpod-core-dev/build/image-builder-mk3/bob:test"
       },
       "refCache": {
@@ -4644,23 +4755,6 @@ metadata:
 # v1/ConfigMap proxy-config
 apiVersion: v1
 data:
-  vhost.docker-registry: |-
-    https://registry.gitpod.example.com {
-        import enable_log
-        import remove_server_header
-        import ssl_configuration
-
-        basicauth bcrypt "Docker Registry" {
-            xSedJiDgJQQg4BkW5xKu JDJhJDEwJFFTRGRRMHZZY2pIS2JqUC9aMDNnVC5HbEg2Z1dOQm5TL0pySnpYSm5iNy9DeVh0ZUw2cFM2
-        }
-
-        reverse_proxy https://registry.default.svc.cluster.local {
-            flush_interval -1
-            transport http {
-                tls_trusted_ca_certs /etc/caddy/registry-certs/ca.crt
-            }
-        }
-    }
   vhost.empty: '# Placeholder to avoid errors loading files using a glob pattern'
   vhost.ide-proxy: |
     https://ide.gitpod.example.com {
@@ -4754,42 +4848,25 @@ metadata:
   name: public-api-server
   namespace: default
 ---
-# v1/ConfigMap registry-config
-# Source: docker-registry/charts/docker-registry/templates/configmap.yaml
+# v1/ConfigMap refresh-credential
 apiVersion: v1
+data:
+  config.json: |-
+    {
+      "namespace": "default",
+      "credentialsFile": "/mnt/secrets/storage/credentials",
+      "region": "eu-west-2",
+      "publicRegistry": false,
+      "secretToUpdate": "aws-ecr-credential"
+    }
 kind: ConfigMap
 metadata:
-  name: registry-config
-  namespace: default
+  creationTimestamp: null
   labels:
-    app: docker-registry
-    chart: docker-registry-1.16.0
-    heritage: Helm
-    release: docker-registry
-data:
-  config.yml: |-
-    health:
-      storagedriver:
-        enabled: true
-        interval: 10s
-        threshold: 3
-    http:
-      addr: :5000
-      debug:
-        addr: :5001
-        prometheus:
-          enabled: false
-          path: /metrics
-      headers:
-        X-Content-Type-Options:
-        - nosniff
-    log:
-      fields:
-        service: registry
-    storage:
-      cache:
-        blobdescriptor: inmemory
-    version: 0.1
+    app: gitpod
+    component: refresh-credential
+  name: refresh-credential
+  namespace: default
 ---
 # v1/ConfigMap registry-facade
 apiVersion: v1
@@ -4829,7 +4906,7 @@ data:
           "key": "/mnt/certificates/tls.key"
         }
       },
-      "dockerAuth": "/mnt/pull-secret.json",
+      "dockerAuth": "/mnt/pull-secret/pull-secret.json",
       "pprofAddr": "127.0.0.1:6060",
       "prometheusAddr": "127.0.0.1:9500",
       "readinessProbeAddr": ":8086"
@@ -4874,6 +4951,7 @@ data:
       "stripeConfigFile": "",
       "enablePayment": false,
       "patSigningKeyFile": "",
+      "withoutWorkspaceComponents": false,
       "workspaceHeartbeat": {
         "intervalSeconds": 60,
         "timeoutSeconds": 300
@@ -4998,7 +5076,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/clion:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/clion:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "code": {
             "orderKey": "00",
@@ -5006,7 +5092,7 @@ data:
             "type": "browser",
             "logo": "https://ide.gitpod.example.com/image/ide-logo/vscode.svg",
             "label": "Browser",
-            "image": "eu.gcr.io/gitpod-core-dev/build/ide/code:commit-4dabe593cb0c05e25ded443109a3683a22d544ba",
+            "image": "eu.gcr.io/gitpod-core-dev/build/ide/code:commit-73b9682c5040a9fec5a02e066aa48faa635f5ca5",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/code:nightly"
           },
           "code-desktop": {
@@ -5025,7 +5111,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/goland:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/goland:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "intellij": {
             "orderKey": "04",
@@ -5035,7 +5129,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/intellij:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/intellij:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "phpstorm": {
             "orderKey": "07",
@@ -5045,7 +5147,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/phpstorm:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/phpstorm:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "pycharm": {
             "orderKey": "06",
@@ -5055,7 +5165,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/pycharm:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/pycharm:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "rider": {
             "orderKey": "10",
@@ -5065,7 +5183,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/rider:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/rider:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "rubymine": {
             "orderKey": "08",
@@ -5075,7 +5201,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/rubymine:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/rubymine:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "webstorm": {
             "orderKey": "09",
@@ -5085,7 +5219,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/webstorm:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/webstorm:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           }
         },
         "defaultIde": "code",
@@ -5176,22 +5318,24 @@ data:
           "tempDir": "/tmp",
           "storage": {
             "stage": "",
-            "kind": "minio",
+            "kind": "s3",
             "gcloud": {
               "credentialsFile": "",
               "region": "",
               "projectId": ""
             },
             "minio": {
-              "endpoint": "s3.amazonaws.com",
+              "endpoint": "",
               "accessKey": "",
-              "accessKeyFile": "/mnt/secrets/storage/accessKeyId",
+              "accessKeyFile": "",
               "secretKey": "",
-              "secretKeyFile": "/mnt/secrets/storage/secretAccessKey",
-              "secure": true,
+              "secretKeyFile": "",
+              "region": ""
+            },
+            "s3": {
+              "bucket": "s3-bucket",
               "region": "eu-west-2",
-              "parallelUpload": 100,
-              "bucket": "s3-bucket"
+              "credentialsFile": "/mnt/secrets/storage/credentials"
             },
             "blobQuota": 5368709120
           },
@@ -5362,22 +5506,24 @@ data:
       "content": {
         "storage": {
           "stage": "",
-          "kind": "minio",
+          "kind": "s3",
           "gcloud": {
             "credentialsFile": "",
             "region": "",
             "projectId": ""
           },
           "minio": {
-            "endpoint": "s3.amazonaws.com",
+            "endpoint": "",
             "accessKey": "",
-            "accessKeyFile": "/mnt/secrets/storage/accessKeyId",
+            "accessKeyFile": "",
             "secretKey": "",
-            "secretKeyFile": "/mnt/secrets/storage/secretAccessKey",
-            "secure": true,
+            "secretKeyFile": "",
+            "region": ""
+          },
+          "s3": {
+            "bucket": "s3-bucket",
             "region": "eu-west-2",
-            "parallelUpload": 100,
-            "bucket": "s3-bucket"
+            "credentialsFile": "/mnt/secrets/storage/credentials"
           },
           "blobQuota": 5368709120
         }
@@ -6050,6 +6196,28 @@ rules:
     resources: ["events"]
     verbs: ["create"]
 ---
+# rbac.authorization.k8s.io/v1/Role refresh-credential
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  creationTimestamp: null
+  labels:
+    app: gitpod
+    component: refresh-credential
+  name: refresh-credential
+  namespace: default
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+---
 # rbac.authorization.k8s.io/v1/Role server
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -6264,24 +6432,6 @@ subjects:
 - kind: ServiceAccount
   name: nobody
   namespace: default
----
-# rbac.authorization.k8s.io/v1/RoleBinding docker-registry
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  creationTimestamp: null
-  labels:
-    app: gitpod
-    component: docker-registry
-  name: docker-registry
-  namespace: default
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: default-ns-psp:restricted-root-user
-subjects:
-- kind: ServiceAccount
-  name: docker-registry
 ---
 # rbac.authorization.k8s.io/v1/RoleBinding gitpod
 apiVersion: rbac.authorization.k8s.io/v1
@@ -6518,6 +6668,24 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: rabbitmq
+---
+# rbac.authorization.k8s.io/v1/RoleBinding refresh-credential
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  creationTimestamp: null
+  labels:
+    app: gitpod
+    component: refresh-credential
+  name: refresh-credential
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: refresh-credential
+subjects:
+- kind: ServiceAccount
+  name: refresh-credential
 ---
 # rbac.authorization.k8s.io/v1/RoleBinding server
 apiVersion: rbac.authorization.k8s.io/v1
@@ -7033,29 +7201,6 @@ spec:
 status:
   loadBalancer: {}
 ---
-# v1/Service registry
-# Source: docker-registry/charts/docker-registry/templates/service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: registry
-  namespace: default
-  labels:
-    app: docker-registry
-    chart: docker-registry-1.16.0
-    release: docker-registry
-    heritage: Helm
-spec:
-  type: ClusterIP
-  ports:
-    - port: 443
-      protocol: TCP
-      name: https-443
-      targetPort: 5000
-  selector:
-    app: docker-registry
-    release: docker-registry
----
 # v1/Service registry-facade
 apiVersion: v1
 kind: Service
@@ -7295,6 +7440,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -7334,7 +7480,7 @@ spec:
   template:
     metadata:
       annotations:
-        gitpod.io/checksum_config: 1568539df3f78cad79c3dd7b7e3ae3f5cf4fa74ad7263936762f004a8a6af77c
+        gitpod.io/checksum_config: 627e2d5a5d50e8eb2531bd494ceb9cd26315e43008248fb6825dfc2b5189a3d3
       creationTimestamp: null
       labels:
         app: gitpod
@@ -7410,6 +7556,7 @@ spec:
             cpu: 100m
             memory: 32Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 1000
         volumeMounts:
@@ -7421,9 +7568,8 @@ spec:
         - mountPath: /ws-manager-client-tls-certs
           name: ws-manager-client-tls-certs
           readOnly: true
-        - mountPath: /mnt/pull-secret.json
+        - mountPath: /mnt/pull-secret
           name: pull-secret
-          subPath: .dockerconfigjson
         - mountPath: /mnt/certificates
           name: config-certificates
       - args:
@@ -7445,6 +7591,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -7467,6 +7614,15 @@ spec:
               - /app/ready-probe-labeler
               - --label=gitpod.io/registry-facade_ready_ns_default
               - --shutdown
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ready
+            port: 8086
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          successThreshold: 1
+          timeoutSeconds: 2
         name: node-labeler
         resources: {}
       dnsPolicy: ClusterFirst
@@ -7502,7 +7658,10 @@ spec:
           secretName: ws-manager-client-tls
       - name: pull-secret
         secret:
-          secretName: builtin-registry-auth
+          items:
+          - key: .dockerconfigjson
+            path: pull-secret.json
+          secretName: aws-ecr-credential
       - hostPath:
           path: /
         name: hostfs
@@ -7538,7 +7697,7 @@ spec:
   template:
     metadata:
       annotations:
-        gitpod.io/checksum_config: 7c6a9adef1549c1cec440988670ae8f96809e39e3764e499121f1369afdb33bc
+        gitpod.io/checksum_config: b409f63d3d077a410f4e6595ed16879126c55ae65d9301397bff846d89011cab
         seccomp.security.alpha.kubernetes.io/shiftfs-module-loader: unconfined
       creationTimestamp: null
       labels:
@@ -7659,6 +7818,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -7681,8 +7841,19 @@ spec:
               - /app/ready-probe-labeler
               - --label=gitpod.io/ws-daemon_ready_ns_default
               - --shutdown
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ready
+            port: 9501
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          successThreshold: 1
+          timeoutSeconds: 1
         name: node-labeler
         resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostPID: true
@@ -8071,6 +8242,8 @@ spec:
             requests:
               cpu: 1m
               memory: 150Mi
+          securityContext:
+            allowPrivilegeEscalation: false
           volumeMounts:
             - mountPath: /config
               name: config
@@ -8089,6 +8262,8 @@ spec:
             requests:
               cpu: 1m
               memory: 150Mi
+          securityContext:
+            allowPrivilegeEscalation: false
           volumeMounts:
             - mountPath: /config
               name: config
@@ -8113,6 +8288,7 @@ spec:
               cpu: 1m
               memory: 30Mi
           securityContext:
+            allowPrivilegeEscalation: false
             runAsGroup: 65532
             runAsNonRoot: true
             runAsUser: 65532
@@ -8167,7 +8343,7 @@ spec:
   template:
     metadata:
       annotations:
-        gitpod.io/checksum_config: a93d22be9b0695e0bd3211bfd5e023b09c08a8cea026a41f080346023887bd74
+        gitpod.io/checksum_config: a46080fdf584e8531ec566bcd7761b7ceca365777f0859476a0a9c68beb99737
       creationTimestamp: null
       labels:
         app: gitpod
@@ -8242,9 +8418,8 @@ spec:
           readOnly: true
         - mountPath: /mnt/cache
           name: cache
-        - mountPath: /mnt/pull-secret.json
+        - mountPath: /mnt/pull-secret
           name: pull-secret
-          subPath: .dockerconfigjson
       - args:
         - --logtostderr
         - --insecure-listen-address=[$(IP)]:9500
@@ -8264,6 +8439,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -8278,7 +8454,10 @@ spec:
         name: config
       - name: pull-secret
         secret:
-          secretName: builtin-registry-auth
+          items:
+          - key: .dockerconfigjson
+            path: pull-secret.json
+          secretName: aws-ecr-credential
 status: {}
 ---
 # apps/v1/Deployment content-service
@@ -8305,7 +8484,7 @@ spec:
   template:
     metadata:
       annotations:
-        gitpod.io/checksum_config: 8a160b6e8470e7a514961a4530576b4fa6bfb60eae6a275d05f2b488542a9e9b
+        gitpod.io/checksum_config: 598a09af7abd0a586af5d21b998f85977fc567f464cf45e0d5b4f43ed0b1c028
       creationTimestamp: null
       labels:
         app: gitpod
@@ -8387,6 +8566,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -8479,6 +8659,7 @@ spec:
             cpu: 100m
             memory: 32Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
@@ -8492,7 +8673,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    gitpod.io/checksum_config: cb4cc24849de9562a8146bc14338c6a2298f3056b17f1cee5f08c1475327ff57
+    gitpod.io/checksum_config: 7346723d23891c253f282241ed24e225e16dd2ddafa9b7c90d1da928a4923f4b
   creationTimestamp: null
   labels:
     app: gitpod
@@ -8606,6 +8787,9 @@ spec:
           name: config
           readOnly: true
           subPath: config.json
+        - mountPath: /secrets/database-config
+          name: database-config
+          readOnly: true
       - args:
         - --logtostderr
         - --insecure-listen-address=[$(IP)]:9500
@@ -8625,6 +8809,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -8665,6 +8850,7 @@ spec:
         name: database-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       restartPolicy: Always
@@ -8674,6 +8860,9 @@ spec:
       - configMap:
           name: iam
         name: config
+      - name: database-config
+        secret:
+          secretName: aws-database
 status: {}
 ---
 # apps/v1/Deployment ide-metrics
@@ -8700,7 +8889,7 @@ spec:
   template:
     metadata:
       annotations:
-        gitpod.io/checksum_config: c6e6a9f479c4a92c62793e24470b07496121a249ea515fcb72ea9441c954cfb4
+        gitpod.io/checksum_config: d42da55c46ab5e8278c46a30a13e4f2c614ad4f340863a57c91fc6183a1068fc
       creationTimestamp: null
       labels:
         app: gitpod
@@ -8754,6 +8943,7 @@ spec:
             cpu: 100m
             memory: 128Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
         volumeMounts:
         - mountPath: /config
@@ -8778,6 +8968,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -8867,6 +9058,7 @@ spec:
             cpu: 100m
             memory: 32Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
@@ -8954,6 +9146,7 @@ spec:
             cpu: 100m
             memory: 128Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
         volumeMounts:
         - mountPath: /config
@@ -8981,6 +9174,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -9023,7 +9217,7 @@ spec:
   template:
     metadata:
       annotations:
-        gitpod.io/checksum_config: 6b82d310231a10f059f0a9efebcf1422f6b2e72eacb55b1ac68f283695b1a167
+        gitpod.io/checksum_config: cc800373849134b29aa04bf2f88b41d073ed09f59d04e65f2b028898453cb0ca
       creationTimestamp: null
       labels:
         app: gitpod
@@ -9073,6 +9267,7 @@ spec:
             cpu: 100m
             memory: 200Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 33333
         volumeMounts:
@@ -9082,9 +9277,8 @@ spec:
         - mountPath: /wsman-certs
           name: wsman-tls-certs
           readOnly: true
-        - mountPath: /config/pull-secret.json
+        - mountPath: /config/pull-secret
           name: pull-secret
-          subPath: .dockerconfigjson
       - args:
         - --logtostderr
         - --insecure-listen-address=[$(IP)]:9500
@@ -9104,6 +9298,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -9138,7 +9333,10 @@ spec:
           secretName: ws-manager-client-tls
       - name: pull-secret
         secret:
-          secretName: builtin-registry-auth
+          items:
+          - key: .dockerconfigjson
+            path: pull-secret.json
+          secretName: aws-ecr-credential
       - emptyDir: {}
         name: gitpod-ca-certificate
       - emptyDir: {}
@@ -9169,7 +9367,7 @@ spec:
   template:
     metadata:
       annotations:
-        gitpod.io/checksum_config: c52c73e63eaa95613a8f4fe77167c754cd48eaf757dd69c2048400311a5ae0a6
+        gitpod.io/checksum_config: e6eea49478778c68ec71eee2aa5d2be8b67ebcfda86107a44d2cc80b88c1ecfe
       creationTimestamp: null
       labels:
         app: gitpod
@@ -9256,16 +9454,13 @@ spec:
             cpu: 100m
             memory: 200Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
         volumeMounts:
         - mountPath: /etc/caddy/vhosts
           name: vhosts
         - mountPath: /etc/caddy/certificates
           name: config-certificates
-        - mountPath: /etc/caddy/registry-auth
-          name: builtin-registry-auth
-        - mountPath: /etc/caddy/registry-certs
-          name: builtin-registry-certs
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       initContainers:
@@ -9293,12 +9488,6 @@ spec:
       - name: config-certificates
         secret:
           secretName: https-certificates
-      - name: builtin-registry-auth
-        secret:
-          secretName: builtin-registry-auth
-      - name: builtin-registry-certs
-        secret:
-          secretName: builtin-registry-certs
 status: {}
 ---
 # apps/v1/Deployment public-api-server
@@ -9414,6 +9603,7 @@ spec:
             cpu: 100m
             memory: 32Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
         volumeMounts:
         - mountPath: /config.json
@@ -9439,6 +9629,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -9479,6 +9670,7 @@ spec:
         name: database-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       restartPolicy: Always
@@ -9489,104 +9681,6 @@ spec:
           name: public-api-server
         name: config
 status: {}
----
-# apps/v1/Deployment registry
-# Source: docker-registry/charts/docker-registry/templates/deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: registry
-  namespace: default
-  labels:
-    app: docker-registry
-    chart: docker-registry-1.16.0
-    release: docker-registry
-    heritage: Helm
-spec:
-  selector:
-    matchLabels:
-      app: docker-registry
-      release: docker-registry
-  replicas: 1
-  minReadySeconds: 5
-  template:
-    metadata:
-      labels:
-        app: docker-registry
-        release: docker-registry
-      annotations:
-        checksum/config: 1d22b82e19bbc654e029029c4fb86ad02dc13422dc3ac52f8175ad190e52a0bb
-        gitpod.io/checksum_config: 0ce55d51677cd683df3c7a244542c6aeaaf5dd6dca0f0458e8053a713228f535
-    spec:
-      serviceAccountName: docker-registry
-      securityContext:
-        fsGroup: 1000
-        runAsUser: 1000
-      containers:
-        - name: docker-registry
-          image: "docker.io/library/registry:2.7.1"
-          imagePullPolicy: IfNotPresent
-          command:
-          - /bin/registry
-          - serve
-          - /etc/docker/registry/config.yml
-          ports:
-            - containerPort: 5000
-          livenessProbe:
-            httpGet:
-              scheme: HTTPS
-              path: /
-              port: 5000
-          readinessProbe:
-            httpGet:
-              scheme: HTTPS
-              path: /
-              port: 5000
-          resources:
-            {}
-          env:
-            - name: REGISTRY_HTTP_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: registry-secret
-                  key: haSharedSecret
-            - name: REGISTRY_HTTP_TLS_CERTIFICATE
-              value: /etc/ssl/docker/tls.crt
-            - name: REGISTRY_HTTP_TLS_KEY
-              value: /etc/ssl/docker/tls.key
-            - name: REGISTRY_STORAGE_S3_ACCESSKEY
-              valueFrom:
-                secretKeyRef:
-                  name: container-registry-s3-backend
-                  key: s3AccessKey
-            - name: REGISTRY_STORAGE_S3_SECRETKEY
-              valueFrom:
-                secretKeyRef:
-                  name: container-registry-s3-backend
-                  key: s3SecretKey
-            - name: REGISTRY_STORAGE_S3_REGION
-              value: eu-west-2
-            - name: REGISTRY_STORAGE_S3_REGIONENDPOINT
-              value: registry.amazonaws.com
-            - name: REGISTRY_STORAGE_S3_BUCKET
-              value: s3-container-registry
-            - name: REGISTRY_STORAGE_S3_ENCRYPT
-              value: "true"
-            - name: REGISTRY_STORAGE_S3_SECURE
-              value: "true"
-          volumeMounts:
-            - name: "registry-config"
-              mountPath: "/etc/docker/registry"
-            - mountPath: /etc/ssl/docker
-              name: tls-cert
-              readOnly: true
-      volumes:
-        - name: registry-config
-          configMap:
-            name: registry-config
-        - name: tls-cert
-          secret:
-            secretName: builtin-registry-certs
 ---
 # apps/v1/Deployment server
 apiVersion: apps/v1
@@ -9612,7 +9706,7 @@ spec:
   template:
     metadata:
       annotations:
-        gitpod.io/checksum_config: b32c163fe13c4dd3dbabb7512d3fea34e61192c7b703a882669b339922630979
+        gitpod.io/checksum_config: 8b2dddff40256f6233f1fcdbf9fcc9f048ff3485aef5a2656f61735559bdefbb
       creationTimestamp: null
       labels:
         app: gitpod
@@ -9735,6 +9829,7 @@ spec:
             cpu: 200m
             memory: 200Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
         volumeMounts:
@@ -9744,11 +9839,11 @@ spec:
         - mountPath: /ide-config
           name: ide-config
           readOnly: true
-        - mountPath: /ws-manager-client-tls-certs
-          name: ws-manager-client-tls-certs
-          readOnly: true
         - mountPath: /twilio-config
           name: twilio-secret-volume
+          readOnly: true
+        - mountPath: /ws-manager-client-tls-certs
+          name: ws-manager-client-tls-certs
           readOnly: true
       - args:
         - --logtostderr
@@ -9769,6 +9864,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -9808,6 +9904,7 @@ spec:
         name: database-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       - args:
@@ -9843,6 +9940,7 @@ spec:
         name: msgbus-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       priorityClassName: system-node-critical
@@ -9854,13 +9952,13 @@ spec:
       - configMap:
           name: server-ide-config
         name: ide-config
-      - name: ws-manager-client-tls-certs
-        secret:
-          secretName: ws-manager-client-tls
       - name: twilio-secret-volume
         secret:
           optional: true
           secretName: twilio-secret
+      - name: ws-manager-client-tls-certs
+        secret:
+          secretName: ws-manager-client-tls
 status: {}
 ---
 # apps/v1/Deployment ws-manager
@@ -9887,7 +9985,7 @@ spec:
   template:
     metadata:
       annotations:
-        gitpod.io/checksum_config: 37d8f5cc70aa4e1bb9cdf77175c535a7b00e4d9276b171a7c4ef2e82a74aa1ca
+        gitpod.io/checksum_config: bb6aec55bf0e44661ecc50247619e050b0b765292acb33f6ba18a706092443d2
       creationTimestamp: null
       labels:
         app: gitpod
@@ -9939,6 +10037,7 @@ spec:
             cpu: 100m
             memory: 32Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
         volumeMounts:
         - mountPath: /config
@@ -9975,6 +10074,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -10124,6 +10224,7 @@ spec:
             cpu: 100m
             memory: 64Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
         volumeMounts:
@@ -10152,6 +10253,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -10192,6 +10294,7 @@ spec:
         name: database-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       - args:
@@ -10227,6 +10330,7 @@ spec:
         name: msgbus-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       priorityClassName: system-node-critical
@@ -10335,16 +10439,17 @@ spec:
             cpu: 100m
             memory: 32Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
         volumeMounts:
         - mountPath: /config
           name: config
           readOnly: true
+        - mountPath: /mnt/certificates
+          name: config-certificates
         - mountPath: /ws-manager-client-tls-certs
           name: ws-manager-client-tls-certs
           readOnly: true
-        - mountPath: /mnt/certificates
-          name: config-certificates
       - args:
         - --logtostderr
         - --insecure-listen-address=[$(IP)]:9500
@@ -10364,6 +10469,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -10385,12 +10491,12 @@ spec:
       - configMap:
           name: ws-proxy
         name: config
-      - name: ws-manager-client-tls-certs
-        secret:
-          secretName: ws-manager-client-tls
       - name: config-certificates
         secret:
           secretName: https-certificates
+      - name: ws-manager-client-tls-certs
+        secret:
+          secretName: ws-manager-client-tls
 status: {}
 ---
 # batch/v1/Job dbinit-session
@@ -10455,6 +10561,8 @@ spec:
         imagePullPolicy: IfNotPresent
         name: dbinit-session
         resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /db-init-scripts
           name: db-init-scripts
@@ -10494,6 +10602,7 @@ spec:
         name: database-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       restartPolicy: Never
@@ -10584,6 +10693,8 @@ spec:
         imagePullPolicy: IfNotPresent
         name: migrations
         resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
       enableServiceLinks: false
       initContainers:
       - args:
@@ -10619,6 +10730,7 @@ spec:
         name: database-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       restartPolicy: Never
@@ -10671,6 +10783,8 @@ spec:
             imagePullPolicy: IfNotPresent
             name: gitpod-telemetry
             resources: {}
+            securityContext:
+              allowPrivilegeEscalation: false
           enableServiceLinks: false
           initContainers:
           - args:
@@ -10706,10 +10820,73 @@ spec:
             name: database-waiter
             resources: {}
             securityContext:
+              allowPrivilegeEscalation: false
               privileged: false
               runAsUser: 31001
           restartPolicy: OnFailure
           serviceAccountName: gitpod
   schedule: '@daily'
   successfulJobsHistoryLimit: 3
+status: {}
+---
+# batch/v1/CronJob refresh-credential
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  creationTimestamp: null
+  labels:
+    app: gitpod
+    component: refresh-credential
+  name: refresh-credential
+  namespace: default
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: gitpod
+        component: refresh-credential
+      name: refresh-credential
+      namespace: default
+    spec:
+      backoffLimit: 10
+      template:
+        metadata:
+          creationTimestamp: null
+          labels:
+            app: gitpod
+            component: refresh-credential
+          name: refresh-credential
+          namespace: default
+        spec:
+          containers:
+          - args:
+            - ecr-update
+            - /config/config.json
+            image: eu.gcr.io/gitpod-core-dev/build/refresh-credential:test
+            imagePullPolicy: IfNotPresent
+            name: refresh-credential
+            resources: {}
+            securityContext:
+              allowPrivilegeEscalation: false
+            volumeMounts:
+            - mountPath: /config
+              name: config
+              readOnly: true
+            - mountPath: /mnt/secrets/storage
+              name: storage-volume
+              readOnly: true
+          restartPolicy: OnFailure
+          serviceAccountName: refresh-credential
+          volumes:
+          - configMap:
+              name: refresh-credential
+            name: config
+          - name: storage-volume
+            secret:
+              secretName: aws-storage
+  schedule: '* */6 * * *'
+  successfulJobsHistoryLimit: 1
 status: {}

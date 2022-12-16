@@ -1,10 +1,11 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package proxy
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -51,6 +52,10 @@ func categorizeRPCError(err error) *connect.Error {
 		default:
 			return connect.NewError(connect.CodeInternal, fmt.Errorf(rpcErr.Message))
 		}
+	}
+
+	if errors.Is(err, context.Canceled) {
+		return connect.NewError(connect.CodeDeadlineExceeded, fmt.Errorf("Request timed out"))
 	}
 
 	if handshakeErr := new(protocol.ErrBadHandshake); errors.As(err, &handshakeErr) {

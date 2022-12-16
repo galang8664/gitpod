@@ -1,6 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package apiv1
 
@@ -105,6 +105,16 @@ func TestWorkspaceInstanceForUsage_WorkspaceRuntimeSeconds(t *testing.T) {
 			Instance: &db.WorkspaceInstanceForUsage{
 				WorkspaceClass: db.WorkspaceClass_Default,
 				StartedTime:    db.NewVarCharTime(time.Date(2022, 9, 8, 12, 0, 0, 0, time.UTC)),
+			},
+			StopTimeIfStillRunning: time.Date(2022, 9, 8, 11, 0, 0, 00, time.UTC),
+			ExpectedCredits:        0,
+		},
+		{
+			Name: "an errored instance that has no stopping time.",
+			Instance: &db.WorkspaceInstanceForUsage{
+				WorkspaceClass: db.WorkspaceClass_Default,
+				StartedTime:    db.NewVarCharTime(time.Date(2022, 9, 8, 12, 0, 0, 0, time.UTC)),
+				StoppedTime:    db.NewVarCharTime(time.Date(2022, 9, 8, 12, 0, 0, 0, time.UTC)),
 			},
 			StopTimeIfStillRunning: time.Date(2022, 9, 8, 11, 0, 0, 00, time.UTC),
 			ExpectedCredits:        0,

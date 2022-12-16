@@ -1,6 +1,6 @@
 # Copyright (c) 2020 Gitpod GmbH. All rights reserved.
 # Licensed under the GNU Affero General Public License (AGPL).
-# See License-AGPL.txt in the project root for license information.
+# See License.AGPL.txt in the project root for license information.
 
 FROM gitpod/workspace-full:2022-11-09-13-54-49
 
@@ -57,8 +57,13 @@ RUN cd /usr/bin && curl -fsSL https://github.com/cert-manager/cert-manager/relea
 RUN cd /usr/bin && curl -fsSL https://github.com/praetorian-inc/gokart/releases/download/v0.4.0/gokart_0.4.0_linux_x86_64.tar.gz | tar xzv --no-anchored gokart
 
 # leeway
+ARG LEEWAY_VERSION=0.7.1
 ENV LEEWAY_MAX_PROVENANCE_BUNDLE_SIZE=8388608
-RUN cd /usr/bin && curl -fsSL https://github.com/gitpod-io/leeway/releases/download/v0.5.2/leeway_0.5.2_Linux_x86_64.tar.gz | tar xz
+ENV LEEWAY_WORKSPACE_ROOT=/workspace/gitpod
+ENV LEEWAY_REMOTE_CACHE_BUCKET=gitpod-core-leeway-cache-branch
+ENV LEEWAY_CACHE_DIR=/var/tmp/cache
+ENV LEEWAY_BUILD_DIR=/var/tmp/build
+RUN cd /usr/bin && curl -fsSL https://github.com/gitpod-io/leeway/releases/download/v${LEEWAY_VERSION}/leeway_${LEEWAY_VERSION}_Linux_x86_64.tar.gz | tar xz
 
 # evans (gRPC client)
 RUN cd /usr/bin && curl -fsSL https://github.com/ktr0731/evans/releases/download/v0.10.6/evans_linux_amd64.tar.gz | tar xz evans
@@ -131,7 +136,7 @@ RUN install-packages netcat
 USER gitpod
 
 # Fix node version we develop against
-ARG GITPOD_NODE_VERSION=16.16.0
+ARG GITPOD_NODE_VERSION=16.18.1
 RUN bash -c ". .nvm/nvm.sh \
     && nvm install $GITPOD_NODE_VERSION \
     && npm install -g typescript yarn"
@@ -169,9 +174,6 @@ ARG GCLOUD_CONFIG_DIR=/home/gitpod/.config/gcloud
 COPY --chown=gitpod gcloud-default-config $GCLOUD_CONFIG_DIR/configurations/config_default
 
 ENV DB_HOST=localhost
-
-ENV LEEWAY_WORKSPACE_ROOT=/workspace/gitpod
-ENV LEEWAY_REMOTE_CACHE_BUCKET=gitpod-core-leeway-cache-branch
 
 # awscliv2
 # See also: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-version.html

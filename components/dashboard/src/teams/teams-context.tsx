@@ -1,12 +1,13 @@
 /**
  * Copyright (c) 2021 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import { Team } from "@gitpod/gitpod-protocol";
-import React, { createContext, useState } from "react";
+import React, { createContext, useContext, useState } from "react";
 import { Location } from "history";
+import { useLocation } from "react-router";
 
 export const TeamsContext = createContext<{
     teams?: Team[];
@@ -35,4 +36,12 @@ export function getCurrentTeam(location: Location<any>, teams?: Team[]): Team | 
 
 export function getSelectedTeamSlug(): string {
     return localStorage.getItem("team-selection") || "";
+}
+
+// Helper hook to return the current team if one is selected
+export function useCurrentTeam(): Team | undefined {
+    const location = useLocation();
+    const { teams } = useContext(TeamsContext);
+
+    return getCurrentTeam(location, teams);
 }

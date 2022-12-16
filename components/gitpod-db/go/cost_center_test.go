@@ -1,11 +1,12 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package db_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -36,6 +37,28 @@ func TestCostCenter_WriteRead(t *testing.T) {
 	require.NoError(t, tx.Error)
 	require.Equal(t, costCenter.ID, read.ID)
 	require.Equal(t, costCenter.SpendingLimit, read.SpendingLimit)
+}
+
+func TestCostCenterManager_GetOrCreateCostCenter_concurrent(t *testing.T) {
+	conn := dbtest.ConnectForTests(t)
+	mnr := db.NewCostCenterManager(conn, db.DefaultSpendingLimit{
+		ForTeams: 0,
+		ForUsers: 500,
+	})
+	id := db.NewTeamAttributionID(uuid.New().String())
+	cleanUp(t, conn, id)
+
+	waitgroup := &sync.WaitGroup{}
+	save := func() {
+		_, err := mnr.GetOrCreateCostCenter(context.Background(), id)
+		require.NoError(t, err)
+		waitgroup.Done()
+	}
+	waitgroup.Add(10)
+	for i := 0; i < 10; i++ {
+		go save()
+	}
+	waitgroup.Wait()
 }
 
 func TestCostCenterManager_GetOrCreateCostCenter(t *testing.T) {

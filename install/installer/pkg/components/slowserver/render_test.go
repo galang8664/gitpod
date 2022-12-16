@@ -1,5 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
-// Licensed under the MIT License. See License-MIT.txt in the project root for license information.
+/// Licensed under the GNU Affero General Public License (AGPL).
+// See License.AGPL.txt in the project root for license information.
 
 package slowserver
 
@@ -55,6 +56,32 @@ func TestServerDeployment_UsesToxiproxyDbHost(t *testing.T) {
 					require.Equal(t, toxiproxy.Component, e.Value)
 				}
 			}
+		}
+	}
+}
+
+func TestServerDeployment_DbWaiterUsesToxiproxyDbHost(t *testing.T) {
+	ctx := renderContext(t, nil, true)
+
+	objects, err := deployment(ctx)
+	require.NoError(t, err)
+
+	require.Len(t, objects, 1, "must render only one object")
+
+	deployment := objects[0].(*appsv1.Deployment)
+
+	var dbWaiterContainers []v1.Container
+	for _, c := range deployment.Spec.Template.Spec.InitContainers {
+		if c.Name == "database-waiter" {
+			dbWaiterContainers = append(dbWaiterContainers, c)
+		}
+	}
+	require.Equal(t, len(dbWaiterContainers), 1)
+
+	waiterContainer := dbWaiterContainers[0]
+	for _, e := range waiterContainer.Env {
+		if e.Name == "DB_HOST" {
+			require.Equal(t, toxiproxy.Component, e.Value)
 		}
 	}
 }

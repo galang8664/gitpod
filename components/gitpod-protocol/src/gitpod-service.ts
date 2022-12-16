@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2020 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import {
@@ -26,6 +26,7 @@ import {
     PrebuiltWorkspace,
     UserSSHPublicKeyValue,
     SSHPublicKeyValue,
+    IDESettings,
 } from "./protocol";
 import {
     Team,
@@ -58,7 +59,6 @@ import {
 } from "./team-subscription-protocol";
 import { RemotePageMessage, RemoteTrackMessage, RemoteIdentifyMessage } from "./analytics";
 import { IDEServer } from "./ide-protocol";
-import { InstallationAdminSettings, TelemetryData } from "./installation-admin-protocol";
 import { ListUsageRequest, ListUsageResponse, CostCenterJSON } from "./usage";
 import { SupportedWorkspaceClass } from "./workspace-class";
 import { BillingMode } from "./billing-mode";
@@ -174,11 +174,6 @@ export interface GitpodServer extends JsonRpcServer<GitpodClient>, AdminServer, 
     getGenericInvite(teamId: string): Promise<TeamMembershipInvite>;
     resetGenericInvite(inviteId: string): Promise<TeamMembershipInvite>;
     deleteTeam(teamId: string): Promise<void>;
-
-    // Admin Settings
-    adminGetSettings(): Promise<InstallationAdminSettings>;
-    adminUpdateSettings(settings: InstallationAdminSettings): Promise<void>;
-    adminGetTelemetryData(): Promise<TelemetryData>;
 
     // Projects
     getProviderRepositoriesForUser(params: GetProviderRepositoriesParams): Promise<ProviderRepository[]>;
@@ -420,16 +415,20 @@ export namespace GitpodServer {
     export interface GetAccountStatementOptions {
         date?: string;
     }
-    export interface CreateWorkspaceOptions {
+    export interface CreateWorkspaceOptions extends StartWorkspaceOptions {
         contextUrl: string;
+
         // whether running workspaces on the same context should be ignored. If false (default) users will be asked.
         ignoreRunningWorkspaceOnSameCommit?: boolean;
         ignoreRunningPrebuild?: boolean;
         allowUsingPreviousPrebuilds?: boolean;
         forceDefaultConfig?: boolean;
     }
+
     export interface StartWorkspaceOptions {
-        forceDefaultImage: boolean;
+        forceDefaultImage?: boolean;
+        workspaceClass?: string;
+        ideSettings?: IDESettings;
     }
     export interface TakeSnapshotOptions {
         workspaceId: string;

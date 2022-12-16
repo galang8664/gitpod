@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 //go:generate ./generate-mock.sh
 
@@ -1540,7 +1540,7 @@ func (gp *APIoverJSONRPC) CreateProject(ctx context.Context, options *CreateProj
 		return
 	}
 	_params := []interface{}{options}
-	err = gp.C.Call(ctx, string(FunctionCreateProject), _params, nil)
+	err = gp.C.Call(ctx, string(FunctionCreateProject), _params, &res)
 	return
 }
 
@@ -1560,7 +1560,7 @@ func (gp *APIoverJSONRPC) GetUserProjects(ctx context.Context) (res []*Project, 
 		return
 	}
 	_params := []interface{}{}
-	err = gp.C.Call(ctx, string(FunctionGetUserProjects), _params, nil)
+	err = gp.C.Call(ctx, string(FunctionGetUserProjects), _params, &res)
 	return
 }
 
@@ -1570,7 +1570,7 @@ func (gp *APIoverJSONRPC) GetTeamProjects(ctx context.Context, teamID string) (r
 		return
 	}
 	_params := []interface{}{teamID}
-	err = gp.C.Call(ctx, string(FunctionGetTeamProjects), _params, nil)
+	err = gp.C.Call(ctx, string(FunctionGetTeamProjects), _params, &res)
 	return
 }
 
@@ -1899,7 +1899,9 @@ type WorkspaceInstanceStatus struct {
 
 // StartWorkspaceOptions is the StartWorkspaceOptions message type
 type StartWorkspaceOptions struct {
-	ForceDefaultImage bool `json:"forceDefaultImage,omitempty"`
+	ForceDefaultImage bool         `json:"forceDefaultImage,omitempty"`
+	WorkspaceClass    string       `json:"workspaceClass,omitempty"`
+	IdeSettings       *IDESettings `json:"ideSettings,omitempty"`
 }
 
 // GetWorkspaceTimeoutResult is the GetWorkspaceTimeoutResult message type

@@ -1,6 +1,6 @@
 # Copyright (c) 2020 Gitpod GmbH. All rights reserved.
 # Licensed under the GNU Affero General Public License (AGPL).
-# See License-AGPL.txt in the project root for license information.
+# See License.AGPL.txt in the project root for license information.
 
 FROM gitpod/openvscode-server-linux-build-agent:centos7-devtoolset8-x64 as dependencies_builder
 
@@ -22,7 +22,7 @@ ARG CODE_COMMIT
 ARG CODE_QUALITY
 ARG CODE_VERSION
 
-ARG NODE_VERSION=16.16.0
+ARG NODE_VERSION=16.18.1
 ARG NVM_DIR="/root/.nvm"
 RUN mkdir -p $NVM_DIR \
     && curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | sh \

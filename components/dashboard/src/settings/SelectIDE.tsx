@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2022 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import { IDEOption, IDEOptions } from "@gitpod/gitpod-protocol/lib/ide-protocol";
@@ -13,6 +13,7 @@ import { getGitpodService } from "../service/service";
 import { UserContext } from "../user-context";
 import CheckBox from "../components/CheckBox";
 import { User } from "@gitpod/gitpod-protocol";
+import PillLabel from "../components/PillLabel";
 
 export type IDEChangedTrackLocation = "workspace_list" | "workspace_start" | "preferences";
 interface SelectIDEProps {
@@ -75,12 +76,7 @@ export default function SelectIDE(props: SelectIDEProps) {
     const [ideOptions, setIdeOptions] = useState<IDEOptions | undefined>(undefined);
     useEffect(() => {
         (async () => {
-            const ideopts = await getGitpodService().server.getIDEOptions();
-            // TODO: Compatible with ide-config not deployed, need revert after ide-config deployed
-            delete ideopts.options["code-latest"];
-            delete ideopts.options["code-desktop-insiders"];
-
-            setIdeOptions(ideopts);
+            setIdeOptions(await getGitpodService().server.getIDEOptions());
         })();
     }, []);
 
@@ -95,8 +91,9 @@ export default function SelectIDE(props: SelectIDEProps) {
                             <div className={`my-4 gap-3 flex flex-wrap max-w-3xl`}>
                                 {allIdeOptions.map(([id, option]) => {
                                     const selected = defaultIde === id;
+                                    const version = useLatestVersion ? option.latestImageVersion : option.imageVersion;
                                     const onSelect = () => actuallySetDefaultIde(id);
-                                    return renderIdeOption(option, selected, onSelect);
+                                    return renderIdeOption(option, selected, version, onSelect);
                                 })}
                             </div>
                             {ideOptions.options[defaultIde]?.notes && (
@@ -109,24 +106,21 @@ export default function SelectIDE(props: SelectIDEProps) {
                                 </InfoBox>
                             )}
 
-                            <p className="text-left w-full text-gray-500 dark:text-gray-400">
-                                The <strong>JetBrains desktop IDEs</strong> are currently in beta.{" "}
+                            <p className="text-left w-full text-gray-400 dark:text-gray-500">
+                                <strong>JetBrains </strong> integration is currently in{" "}
+                                <PillLabel type="warn" className="font-semibold mt-2 ml-0 py-0.5 px-1 self-center">
+                                    <a href="https://www.gitpod.io/docs/references/gitpod-releases">
+                                        <span className="text-xs">Beta</span>
+                                    </a>
+                                </PillLabel>
+                                &nbsp;&middot;&nbsp;
                                 <a
                                     href="https://github.com/gitpod-io/gitpod/issues/6576"
-                                    target="gitpod-feedback-issue"
-                                    rel="noopener"
-                                    className="gp-link"
-                                >
-                                    Send feedback
-                                </a>{" "}
-                                ·{" "}
-                                <a
-                                    href="https://www.gitpod.io/docs/integrations/jetbrains"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="gp-link"
                                 >
-                                    Documentation
+                                    Send feedback
                                 </a>
                             </p>
                         </>
@@ -176,20 +170,45 @@ function orderedIdeOptions(ideOptions: IDEOptions) {
         });
 }
 
-function renderIdeOption(option: IDEOption, selected: boolean, onSelect: () => void): JSX.Element {
+function renderIdeOption(
+    option: IDEOption,
+    selected: boolean,
+    version: IDEOption["imageVersion"],
+    onSelect: () => void,
+): JSX.Element {
     const label = option.type === "desktop" ? "" : option.type;
     const card = (
-        <SelectableCardSolid className="w-36 h-40" title={option.title} selected={selected} onClick={onSelect}>
+        <SelectableCardSolid className="w-36 h-44" title={option.title} selected={selected} onClick={onSelect}>
             <div className="flex justify-center mt-3">
                 <img className="w-16 filter-grayscale self-center" src={option.logo} alt="logo" />
             </div>
-            {label ? (
+            <div
+                className="mt-2 px-3 py-1 self-center"
+                style={{
+                    minHeight: "1.75rem",
+                }}
+            >
+                {label ? (
+                    <span
+                        className={`font-semibold text-sm ${
+                            selected ? "text-gray-100 dark:text-gray-600" : "text-gray-600 dark:text-gray-500"
+                        } uppercase`}
+                    >
+                        {label}
+                    </span>
+                ) : (
+                    <></>
+                )}
+            </div>
+
+            {version ? (
                 <div
-                    className={`font-semibold text-sm ${
+                    className={`font-semibold text-xs ${
                         selected ? "text-gray-100 dark:text-gray-600" : "text-gray-600 dark:text-gray-500"
-                    } uppercase mt-2 px-3 py-1 self-center`}
+                    } uppercase px-3 self-center`}
+                    title="The IDE's current version on Gitpod"
                 >
-                    {label}
+                    {version}
                 </div>
             ) : (
                 <></>

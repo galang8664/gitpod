@@ -1,6 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package cmd
 
@@ -31,6 +31,11 @@ func newListPreviewsCmd(logger *logrus.Logger) *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.AddCommand(
+		newListWorkspacesCmd(logger),
+		newListStaleCmd(logger),
+	)
 
 	return cmd
 }

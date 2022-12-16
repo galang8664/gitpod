@@ -1,5 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
-// Licensed under the MIT License. See License-MIT.txt in the project root for license information.
+/// Licensed under the GNU Affero General Public License (AGPL).
+// See License.AGPL.txt in the project root for license information.
 
 package cmd
 
@@ -9,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -82,7 +84,9 @@ func TestRender(t *testing.T) {
 			}
 
 			// Compare
-			require.Equal(t, string(content), got)
+			if diff := cmp.Diff(string(content), got); diff != "" {
+				t.Errorf("non-matching golden file %s (-want +got):\n%s", testCase.Name, diff)
+			}
 		})
 	}
 }

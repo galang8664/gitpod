@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package wsdaemon
 
@@ -290,6 +290,22 @@ fi
 					common.ProxyEnv(&ctx.Config),
 				)),
 				ImagePullPolicy: corev1.PullIfNotPresent,
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: pointer.Bool(false),
+				},
+				LivenessProbe: &corev1.Probe{
+					ProbeHandler: corev1.ProbeHandler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/ready",
+							Port: intstr.IntOrString{IntVal: ReadinessPort},
+						},
+					},
+					InitialDelaySeconds: 5,
+					PeriodSeconds:       2,
+					TimeoutSeconds:      1,
+					SuccessThreshold:    1,
+					FailureThreshold:    3,
+				},
 				Lifecycle: &corev1.Lifecycle{
 					PreStop: &corev1.LifecycleHandler{
 						Exec: &corev1.ExecAction{

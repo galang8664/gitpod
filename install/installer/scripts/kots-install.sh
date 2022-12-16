@@ -1,6 +1,7 @@
 #!/bin/bash
 # Copyright (c) 2022 Gitpod GmbH. All rights reserved.
-# Licensed under the MIT License. See License-MIT.txt in the project root for license information.
+# Licensed under the GNU Affero General Public License (AGPL).
+# See License.AGPL.txt in the project root for license information.
 
 set -eo pipefail
 
@@ -89,7 +90,7 @@ EOF
     echo "Gitpod: Installer version - $(/app/installer version | yq e '.version' -)"
 
     echo "Gitpod: Generate the base Installer config"
-    /app/installer config init
+    /app/installer config init --overwrite
 
     if [ "${INSTALLER_DRY_RUN}" != "true" ]; then
         echo "Gitpod: auto-detecting ShiftFS support on host machine"

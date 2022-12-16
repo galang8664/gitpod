@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 # Licensed under the GNU Affero General Public License (AGPL).
-# See License-AGPL.txt in the project root for license information.
+# See License.AGPL.txt in the project root for license information.
 
 set -Eeuo pipefail
 
@@ -34,6 +34,8 @@ cf_patch=$(echo "$cf_patch" |jq ".ideOptions.options.pycharm.$prop = \"$dev_imag
 cf_patch=$(echo "$cf_patch" |jq ".ideOptions.options.phpstorm.$prop = \"$dev_image\"")
 cf_patch=$(echo "$cf_patch" |jq ".ideOptions.options.rubymine.$prop = \"$dev_image\"")
 cf_patch=$(echo "$cf_patch" |jq ".ideOptions.options.webstorm.$prop = \"$dev_image\"")
+cf_patch=$(echo "$cf_patch" |jq ".ideOptions.options.rider.$prop = \"$dev_image\"")
+cf_patch=$(echo "$cf_patch" |jq ".ideOptions.options.clion.$prop = \"$dev_image\"")
 cf_patch=$(echo "$cf_patch" |jq tostring)
 cf_patch="{\"data\": {\"config.json\": $cf_patch}}"
 

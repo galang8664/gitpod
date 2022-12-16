@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2020 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import { ContainerModule } from "inversify";
@@ -114,6 +114,8 @@ import { prometheusClientMiddleware } from "@gitpod/gitpod-protocol/lib/util/nic
 import { UsageService, UsageServiceImpl } from "./user/usage-service";
 import { OpenPrebuildPrefixContextParser } from "./workspace/open-prebuild-prefix-context-parser";
 import { contentServiceBinder } from "./util/content-service-sugar";
+import { UbpResetOnCancel } from "@gitpod/gitpod-payment-endpoint/lib/chargebee/ubp-reset-on-cancel";
+import { retryMiddleware } from "nice-grpc-client-middleware-retry";
 
 export const productionContainerModule = new ContainerModule((bind, unbind, isBound, rebind) => {
     bind(Config).toConstantValue(ConfigFile.fromFile());
@@ -281,9 +283,18 @@ export const productionContainerModule = new ContainerModule((bind, unbind, isBo
         .toDynamicValue((ctx) => {
             const config = ctx.container.get<Config>(Config);
             const metricsClient = ctx.container.get<IClientCallMetrics>(IClientCallMetrics);
+            const options: grpc.ClientOptions = {
+                ...defaultGRPCOptions,
+            };
             return createClientFactory()
                 .use(prometheusClientMiddleware(metricsClient))
-                .create(IDEServiceDefinition, createChannel(config.ideServiceAddr));
+                .use(retryMiddleware)
+                .create(IDEServiceDefinition, createChannel(config.ideServiceAddr, undefined, options), {
+                    "*": {
+                        retryBaseDelayMs: 200,
+                        retryMaxAttempts: 15,
+                    },
+                });
         })
         .inSingletonScope();
 
@@ -301,4 +312,5 @@ export const productionContainerModule = new ContainerModule((bind, unbind, isBo
 
     bind(UsageServiceImpl).toSelf().inSingletonScope();
     bind(UsageService).toService(UsageServiceImpl);
+    bind(UbpResetOnCancel).toSelf().inSingletonScope();
 });

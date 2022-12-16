@@ -1,6 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package stripe
 
@@ -215,7 +215,7 @@ func (c *Client) GetCustomerByAttributionID(ctx context.Context, attributionID s
 	}
 
 	if len(customers) == 0 {
-		return nil, status.Errorf(codes.NotFound, "no team customer found for attribution_id: %s", attributionID)
+		return nil, status.Errorf(codes.NotFound, "no customer found for attribution_id: %s", attributionID)
 	}
 	if len(customers) > 1 {
 		return nil, status.Errorf(codes.FailedPrecondition, "found multiple customers for attributiuon_id: %s", attributionID)
@@ -234,6 +234,7 @@ func (c *Client) GetCustomer(ctx context.Context, customerID string) (customer *
 	customer, err = c.sc.Customers.Get(customerID, &stripe.CustomerParams{
 		Params: stripe.Params{
 			Context: ctx,
+			Expand:  []*string{stripe.String("tax")},
 		},
 	})
 	if err != nil {

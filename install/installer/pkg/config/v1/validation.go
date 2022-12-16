@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package config
 
@@ -149,6 +149,11 @@ func (v version) ClusterValidation(rcfg interface{}) cluster.ValidationChecks {
 	if cfg.ContainerRegistry.External != nil {
 		secretName := cfg.ContainerRegistry.External.Certificate.Name
 		res = append(res, cluster.CheckSecret(secretName, cluster.CheckSecretRequiredData(".dockerconfigjson")))
+
+		if cfg.ContainerRegistry.External.Credentials != nil {
+			credSecretName := cfg.ContainerRegistry.External.Credentials.Name
+			res = append(res, cluster.CheckSecret(credSecretName, cluster.CheckSecretRequiredData("credentials")))
+		}
 	}
 
 	if cfg.ContainerRegistry.S3Storage != nil {
@@ -164,6 +169,11 @@ func (v version) ClusterValidation(rcfg interface{}) cluster.ValidationChecks {
 	if cfg.Database.External != nil {
 		secretName := cfg.Database.External.Certificate.Name
 		res = append(res, cluster.CheckSecret(secretName, cluster.CheckSecretRequiredData("encryptionKeys", "host", "password", "port", "username")))
+	}
+
+	if cfg.Database.SSL != nil && cfg.Database.SSL.CaCert != nil {
+		secretName := cfg.Database.SSL.CaCert.Name
+		res = append(res, cluster.CheckSecret(secretName, cluster.CheckSecretRequiredData("ca.crt")))
 	}
 
 	if cfg.License != nil {

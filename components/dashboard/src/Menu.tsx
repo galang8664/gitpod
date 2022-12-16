@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2021 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import { User, TeamMemberInfo, Project } from "@gitpod/gitpod-protocol";
@@ -28,6 +28,7 @@ import { inResource, isGitpodIo } from "./utils";
 import { BillingMode } from "@gitpod/gitpod-protocol/lib/billing-mode";
 import { FeatureFlagContext } from "./contexts/FeatureFlagContext";
 import { publicApiTeamMembersToProtocol, teamsService } from "./service/public-api";
+import { listAllProjects } from "./service/public-api";
 
 interface Entry {
     title: string;
@@ -37,7 +38,7 @@ interface Entry {
 
 export default function Menu() {
     const { user } = useContext(UserContext);
-    const { showUsageView, usePublicApiTeamsService } = useContext(FeatureFlagContext);
+    const { showUsageView, usePublicApiTeamsService, usePublicApiProjectsService } = useContext(FeatureFlagContext);
     const { teams } = useContext(TeamsContext);
     const location = useLocation();
     const team = getCurrentTeam(location, teams);
@@ -56,11 +57,17 @@ export default function Menu() {
         getGitpodService().server.getBillingModeForUser().then(setUserBillingMode);
     }, []);
 
-    const match = useRouteMatch<{ segment1?: string; segment2?: string; segment3?: string }>(
-        "/(t/)?:segment1/:segment2?/:segment3?",
+    const teamRouteMatch = useRouteMatch<{ segment1?: string; segment2?: string; segment3?: string }>(
+        "/t/:segment1/:segment2?/:segment3?",
     );
+
+    // TODO: Remove it after remove projects under personal accounts
+    const projectsRouteMatch = useRouteMatch<{ segment1?: string; segment2?: string }>(
+        "/projects/:segment1?/:segment2?",
+    );
+
     const projectSlug = (() => {
-        const resource = match?.params?.segment2;
+        const resource = teamRouteMatch?.params?.segment2 || projectsRouteMatch?.params.segment1;
         if (
             resource &&
             ![
@@ -80,7 +87,7 @@ export default function Menu() {
         }
     })();
     const prebuildId = (() => {
-        const resource = projectSlug && match?.params?.segment3;
+        const resource = projectSlug && (teamRouteMatch?.params?.segment3 || projectsRouteMatch?.params.segment2);
         if (
             resource &&
             ![
@@ -148,9 +155,16 @@ export default function Menu() {
             return;
         }
         (async () => {
-            const projects = !!team
-                ? await getGitpodService().server.getTeamProjects(team.id)
-                : await getGitpodService().server.getUserProjects();
+            let projects: Project[];
+            if (!!team) {
+                projects = usePublicApiProjectsService
+                    ? await listAllProjects({ teamId: team.id })
+                    : await getGitpodService().server.getTeamProjects(team.id);
+            } else {
+                projects = usePublicApiProjectsService
+                    ? await listAllProjects({ userId: user?.id })
+                    : await getGitpodService().server.getUserProjects();
+            }
 
             // Find project matching with slug, otherwise with name
             const project =
@@ -217,7 +231,10 @@ export default function Menu() {
                 link: `/t/${team.slug}/members`,
             },
         ];
-        if (showUsageView || (teamBillingMode && teamBillingMode.mode === "usage-based")) {
+        if (
+            currentUserInTeam?.role === "owner" &&
+            (showUsageView || (teamBillingMode && teamBillingMode.mode === "usage-based"))
+        ) {
             teamSettingsList.push({
                 title: "Usage",
                 link: `/t/${team.slug}/usage`,

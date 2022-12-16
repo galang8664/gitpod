@@ -158,6 +158,9 @@ spec:
               component: server
         - podSelector:
             matchLabels:
+              component: slow-server
+        - podSelector:
+            matchLabels:
               component: ws-manager
   podSelector:
     matchLabels:
@@ -1482,7 +1485,7 @@ data:
           "maxSizeBytes": 1073741824
         }
       },
-      "dockerAuth": "/mnt/pull-secret.json",
+      "dockerAuth": "/mnt/pull-secret/pull-secret.json",
       "pprofAddr": "127.0.0.1:6060",
       "prometheusAddr": "127.0.0.1:9500",
       "readinessProbeAddr": ":8086"
@@ -1550,7 +1553,7 @@ data:
     -- 01-create-and-init-sessions-db.sql
 
     -- Copyright (c) 2020 Gitpod GmbH. All rights reserved.
-    -- Licensed under the MIT License. See License-MIT.txt in the project root for license information.
+    -- Licensed under the GNU Affero General Public License (AGPL). See License.AGPL.txt in the project root for license information.
 
     -- must be idempotent
 
@@ -1571,7 +1574,7 @@ data:
     -- 02-recreate-gitpod-db.sql
 
     -- Copyright (c) 2020 Gitpod GmbH. All rights reserved.
-    -- Licensed under the MIT License. See License-MIT.txt in the project root for license information.
+    -- Licensed under the GNU Affero General Public License (AGPL). See License.AGPL.txt in the project root for license information.
 
     -- must be idempotent
 
@@ -1733,6 +1736,9 @@ data:
           "public-api-server": {
             "version": "test"
           },
+          "refreshCredential": {
+            "version": "test"
+          },
           "registryFacade": {
             "version": "test"
           },
@@ -1820,6 +1826,9 @@ data:
                 "version": "test"
               },
               "jbBackendPluginLatest": {
+                "version": "test"
+              },
+              "jbLauncher": {
                 "version": "test"
               }
             }
@@ -2499,7 +2508,7 @@ data:
     metadata:
       annotations:
         gitpod.io: hello
-        gitpod.io/checksum_config: 83d6810ed170838c3d1e9f3674d3c8d2c0415f050e1c06e99426d7cd5ce69364
+        gitpod.io/checksum_config: 6c23f5fda26f7744c03f56515d6d5c8815df8861056ae46d07b95e01f9701648
         hello: world
       creationTimestamp: null
       labels:
@@ -4270,7 +4279,8 @@ data:
             "address": "0.0.0.0:9002"
           }
         }
-      }
+      },
+      "databaseConfigPath": "/secrets/database-config"
     }
 kind: ConfigMap
 metadata:
@@ -4302,7 +4312,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/clion:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/clion:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "code": {
             "orderKey": "00",
@@ -4310,7 +4328,7 @@ data:
             "type": "browser",
             "logo": "https://ide.gitpod.example.com/image/ide-logo/vscode.svg",
             "label": "Browser",
-            "image": "eu.gcr.io/gitpod-core-dev/build/ide/code:commit-4dabe593cb0c05e25ded443109a3683a22d544ba",
+            "image": "eu.gcr.io/gitpod-core-dev/build/ide/code:commit-73b9682c5040a9fec5a02e066aa48faa635f5ca5",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/code:nightly"
           },
           "code-desktop": {
@@ -4329,7 +4347,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/goland:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/goland:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "intellij": {
             "orderKey": "04",
@@ -4339,7 +4365,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/intellij:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/intellij:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "phpstorm": {
             "orderKey": "07",
@@ -4349,7 +4383,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/phpstorm:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/phpstorm:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "pycharm": {
             "orderKey": "06",
@@ -4359,7 +4401,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/pycharm:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/pycharm:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "rider": {
             "orderKey": "10",
@@ -4369,7 +4419,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/rider:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/rider:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "rubymine": {
             "orderKey": "08",
@@ -4379,7 +4437,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/rubymine:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/rubymine:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "webstorm": {
             "orderKey": "09",
@@ -4389,7 +4455,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/webstorm:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/webstorm:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           }
         },
         "defaultIde": "code",
@@ -5181,6 +5255,67 @@ data:
                 "defaultValue": ""
               }
             ]
+          },
+          {
+            "name": "grpc_client_started_total",
+            "help": "Total number of RPCs started on the client.",
+            "labels": [
+              {
+                "name": "grpc_method",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_service",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_type",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              }
+            ]
+          },
+          {
+            "name": "grpc_client_handled_total",
+            "help": "Total number of RPCs completed by the client, regardless of success or failure.",
+            "labels": [
+              {
+                "name": "grpc_method",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_service",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_type",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_code",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              }
+            ]
           }
         ],
         "histogramMetrics": [
@@ -5305,6 +5440,69 @@ data:
               5,
               10
             ]
+          },
+          {
+            "name": "supervisor_initializer_bytes_second",
+            "help": "initializer speed in bytes per second",
+            "labels": [
+              {
+                "name": "kind",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              }
+            ],
+            "buckets": [
+              1048576,
+              2097152,
+              4194304,
+              8388608,
+              16777216,
+              33554432,
+              67108864,
+              134217728,
+              268435456,
+              536870912,
+              1073741824,
+              2147483648
+            ]
+          },
+          {
+            "name": "grpc_client_handling_seconds",
+            "help": "Histogram of response latency (seconds) of the gRPC until it is finished by the application.",
+            "labels": [
+              {
+                "name": "grpc_type",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_service",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              },
+              {
+                "name": "grpc_method",
+                "allowValues": [
+                  "*"
+                ],
+                "defaultValue": ""
+              }
+            ],
+            "buckets": [
+              0.1,
+              0.2,
+              0.5,
+              1,
+              2,
+              5,
+              10
+            ]
           }
         ],
         "errorReporting": {
@@ -5382,7 +5580,7 @@ data:
           }
         },
         "pullSecret": "builtin-registry-auth",
-        "pullSecretFile": "/config/pull-secret.json",
+        "pullSecretFile": "/config/pull-secret/pull-secret.json",
         "baseImageRepository": "registry.gitpod.example.com/base-images",
         "workspaceImageRepository": "registry.gitpod.example.com/workspace-images",
         "builderImage": "eu.gcr.io/gitpod-core-dev/build/image-builder-mk3/bob:test"
@@ -5692,7 +5890,7 @@ data:
           "key": "/mnt/certificates/tls.key"
         }
       },
-      "dockerAuth": "/mnt/pull-secret.json",
+      "dockerAuth": "/mnt/pull-secret/pull-secret.json",
       "pprofAddr": "127.0.0.1:6060",
       "prometheusAddr": "127.0.0.1:9500",
       "readinessProbeAddr": ":8086"
@@ -5742,6 +5940,7 @@ data:
       "stripeConfigFile": "",
       "enablePayment": false,
       "patSigningKeyFile": "",
+      "withoutWorkspaceComponents": false,
       "workspaceHeartbeat": {
         "intervalSeconds": 60,
         "timeoutSeconds": 300
@@ -5871,7 +6070,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/clion:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/clion:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "code": {
             "orderKey": "00",
@@ -5879,7 +6086,7 @@ data:
             "type": "browser",
             "logo": "https://ide.gitpod.example.com/image/ide-logo/vscode.svg",
             "label": "Browser",
-            "image": "eu.gcr.io/gitpod-core-dev/build/ide/code:commit-4dabe593cb0c05e25ded443109a3683a22d544ba",
+            "image": "eu.gcr.io/gitpod-core-dev/build/ide/code:commit-73b9682c5040a9fec5a02e066aa48faa635f5ca5",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/code:nightly"
           },
           "code-desktop": {
@@ -5898,7 +6105,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/goland:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/goland:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "intellij": {
             "orderKey": "04",
@@ -5908,7 +6123,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/intellij:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/intellij:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "phpstorm": {
             "orderKey": "07",
@@ -5918,7 +6141,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/phpstorm:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/phpstorm:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "pycharm": {
             "orderKey": "06",
@@ -5928,7 +6159,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/pycharm:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/pycharm:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "rider": {
             "orderKey": "10",
@@ -5938,7 +6177,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/rider:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/rider:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "rubymine": {
             "orderKey": "08",
@@ -5948,7 +6195,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/rubymine:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/rubymine:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           },
           "webstorm": {
             "orderKey": "09",
@@ -5958,7 +6213,15 @@ data:
             "image": "eu.gcr.io/gitpod-core-dev/build/ide/webstorm:test",
             "latestImage": "eu.gcr.io/gitpod-core-dev/build/ide/webstorm:latest",
             "pluginImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
-            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest"
+            "pluginLatestImage": "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+            "imageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:test",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ],
+            "latestImageLayers": [
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-backend-plugin:latest",
+              "eu.gcr.io/gitpod-core-dev/build/ide/jb-launcher:test"
+            ]
           }
         },
         "defaultIde": "code",
@@ -8426,6 +8689,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -8471,7 +8735,7 @@ spec:
     metadata:
       annotations:
         gitpod.io: hello
-        gitpod.io/checksum_config: 9e5f1a3b0ad0175c34b4be5f0d0a1f0b8c2727eab17bd9548976255a54916e64
+        gitpod.io/checksum_config: fd416b9d91d5650b8ddab533d0b39983c0169716448f74ad056ed5dbc5227aa7
         hello: world
       creationTimestamp: null
       labels:
@@ -8550,6 +8814,7 @@ spec:
             cpu: 100m
             memory: 32Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 1000
         volumeMounts:
@@ -8561,9 +8826,8 @@ spec:
         - mountPath: /ws-manager-client-tls-certs
           name: ws-manager-client-tls-certs
           readOnly: true
-        - mountPath: /mnt/pull-secret.json
+        - mountPath: /mnt/pull-secret
           name: pull-secret
-          subPath: .dockerconfigjson
         - mountPath: /mnt/certificates
           name: config-certificates
       - args:
@@ -8585,6 +8849,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -8607,6 +8872,15 @@ spec:
               - /app/ready-probe-labeler
               - --label=gitpod.io/registry-facade_ready_ns_default
               - --shutdown
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ready
+            port: 8086
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          successThreshold: 1
+          timeoutSeconds: 2
         name: node-labeler
         resources: {}
       dnsPolicy: ClusterFirst
@@ -8642,6 +8916,9 @@ spec:
           secretName: ws-manager-client-tls
       - name: pull-secret
         secret:
+          items:
+          - key: .dockerconfigjson
+            path: pull-secret.json
           secretName: builtin-registry-auth
       - hostPath:
           path: /
@@ -8805,6 +9082,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -8827,8 +9105,19 @@ spec:
               - /app/ready-probe-labeler
               - --label=gitpod.io/ws-daemon_ready_ns_default
               - --shutdown
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ready
+            port: 9501
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          successThreshold: 1
+          timeoutSeconds: 1
         name: node-labeler
         resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostPID: true
@@ -9382,6 +9671,8 @@ spec:
             requests:
               cpu: 1m
               memory: 150Mi
+          securityContext:
+            allowPrivilegeEscalation: false
           volumeMounts:
             - mountPath: /config
               name: config
@@ -9400,6 +9691,8 @@ spec:
             requests:
               cpu: 1m
               memory: 150Mi
+          securityContext:
+            allowPrivilegeEscalation: false
           volumeMounts:
             - mountPath: /config
               name: config
@@ -9424,6 +9717,7 @@ spec:
               cpu: 1m
               memory: 30Mi
           securityContext:
+            allowPrivilegeEscalation: false
             runAsGroup: 65532
             runAsNonRoot: true
             runAsUser: 65532
@@ -9484,7 +9778,7 @@ spec:
     metadata:
       annotations:
         gitpod.io: hello
-        gitpod.io/checksum_config: 83fa4918a8a3e509e417c17dfe176f340594b9e93560245fcf94fea159f23617
+        gitpod.io/checksum_config: f53bfe17888be51da5fce1993c73c75420a1ea22a48ae12c1a1b1ba218ca416c
         hello: world
       creationTimestamp: null
       labels:
@@ -9562,9 +9856,8 @@ spec:
           readOnly: true
         - mountPath: /mnt/cache
           name: cache
-        - mountPath: /mnt/pull-secret.json
+        - mountPath: /mnt/pull-secret
           name: pull-secret
-          subPath: .dockerconfigjson
       - args:
         - --logtostderr
         - --insecure-listen-address=[$(IP)]:9500
@@ -9584,6 +9877,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -9598,6 +9892,9 @@ spec:
         name: config
       - name: pull-secret
         secret:
+          items:
+          - key: .dockerconfigjson
+            path: pull-secret.json
           secretName: builtin-registry-auth
 status: {}
 ---
@@ -9713,6 +10010,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -9812,6 +10110,7 @@ spec:
             cpu: 100m
             memory: 32Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
@@ -9826,7 +10125,7 @@ kind: Deployment
 metadata:
   annotations:
     gitpod.io: hello
-    gitpod.io/checksum_config: 83d6810ed170838c3d1e9f3674d3c8d2c0415f050e1c06e99426d7cd5ce69364
+    gitpod.io/checksum_config: 6c23f5fda26f7744c03f56515d6d5c8815df8861056ae46d07b95e01f9701648
     hello: world
   creationTimestamp: null
   labels:
@@ -9948,6 +10247,9 @@ spec:
           name: config
           readOnly: true
           subPath: config.json
+        - mountPath: /secrets/database-config
+          name: database-config
+          readOnly: true
       - args:
         - --logtostderr
         - --insecure-listen-address=[$(IP)]:9500
@@ -9967,6 +10269,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -10007,6 +10310,7 @@ spec:
         name: database-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       restartPolicy: Always
@@ -10016,6 +10320,9 @@ spec:
       - configMap:
           name: iam
         name: config
+      - name: database-config
+        secret:
+          secretName: mysql
 status: {}
 ---
 # apps/v1/Deployment ide-metrics
@@ -10048,7 +10355,7 @@ spec:
     metadata:
       annotations:
         gitpod.io: hello
-        gitpod.io/checksum_config: e9a5fbb70b2e87f9ef1bdec7fe426ba6237e7cf60410ab6893abef17f502efa7
+        gitpod.io/checksum_config: b412b24494cba05f0480f767e407b5351094c34472d0966722428f0b23d05ff7
         hello: world
       creationTimestamp: null
       labels:
@@ -10105,6 +10412,7 @@ spec:
             cpu: 100m
             memory: 128Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
         volumeMounts:
         - mountPath: /config
@@ -10129,6 +10437,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -10228,6 +10537,7 @@ spec:
             cpu: 100m
             memory: 32Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
@@ -10324,6 +10634,7 @@ spec:
             cpu: 100m
             memory: 128Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
         volumeMounts:
         - mountPath: /config
@@ -10351,6 +10662,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -10399,7 +10711,7 @@ spec:
     metadata:
       annotations:
         gitpod.io: hello
-        gitpod.io/checksum_config: bd4f1ac3b1b2e11f92bb14a55bf98ffb4eb011356e6330fde5b37d2f2de95d28
+        gitpod.io/checksum_config: 3bbe78a00b2f3aebbeb9914eeb8c5e4fed6f3f71646fe10d5c5d6eb61063c719
         hello: world
       creationTimestamp: null
       labels:
@@ -10452,6 +10764,7 @@ spec:
             cpu: 100m
             memory: 200Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 33333
         volumeMounts:
@@ -10461,9 +10774,8 @@ spec:
         - mountPath: /wsman-certs
           name: wsman-tls-certs
           readOnly: true
-        - mountPath: /config/pull-secret.json
+        - mountPath: /config/pull-secret
           name: pull-secret
-          subPath: .dockerconfigjson
       - args:
         - --logtostderr
         - --insecure-listen-address=[$(IP)]:9500
@@ -10483,6 +10795,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -10517,6 +10830,9 @@ spec:
           secretName: ws-manager-client-tls
       - name: pull-secret
         secret:
+          items:
+          - key: .dockerconfigjson
+            path: pull-secret.json
           secretName: builtin-registry-auth
       - emptyDir: {}
         name: gitpod-ca-certificate
@@ -10755,6 +11071,7 @@ spec:
             cpu: 100m
             memory: 200Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
         volumeMounts:
         - mountPath: /etc/caddy/vhosts
@@ -10922,6 +11239,7 @@ spec:
             cpu: 100m
             memory: 32Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
         volumeMounts:
         - mountPath: /config.json
@@ -10947,6 +11265,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -10987,6 +11306,7 @@ spec:
         name: database-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       restartPolicy: Always
@@ -11117,7 +11437,7 @@ spec:
     metadata:
       annotations:
         gitpod.io: hello
-        gitpod.io/checksum_config: b963c6af8760581ce8807544183b759ea2e40fc1a23232d1fc60df13e817c937
+        gitpod.io/checksum_config: 6c49f0b6ac858fc4df2c16fccab97b9967d314efe7a321277f1c43b352b0023d
         hello: world
       creationTimestamp: null
       labels:
@@ -11243,6 +11563,7 @@ spec:
             cpu: 200m
             memory: 200Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
         volumeMounts:
@@ -11252,11 +11573,11 @@ spec:
         - mountPath: /ide-config
           name: ide-config
           readOnly: true
-        - mountPath: /ws-manager-client-tls-certs
-          name: ws-manager-client-tls-certs
-          readOnly: true
         - mountPath: /twilio-config
           name: twilio-secret-volume
+          readOnly: true
+        - mountPath: /ws-manager-client-tls-certs
+          name: ws-manager-client-tls-certs
           readOnly: true
       - args:
         - --logtostderr
@@ -11277,6 +11598,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -11316,6 +11638,7 @@ spec:
         name: database-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       - args:
@@ -11351,6 +11674,7 @@ spec:
         name: msgbus-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       priorityClassName: system-node-critical
@@ -11362,13 +11686,13 @@ spec:
       - configMap:
           name: server-ide-config
         name: ide-config
-      - name: ws-manager-client-tls-certs
-        secret:
-          secretName: ws-manager-client-tls
       - name: twilio-secret-volume
         secret:
           optional: true
           secretName: twilio-secret
+      - name: ws-manager-client-tls-certs
+        secret:
+          secretName: ws-manager-client-tls
 status: {}
 ---
 # apps/v1/Deployment ws-manager
@@ -11456,6 +11780,7 @@ spec:
             cpu: 100m
             memory: 32Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
         volumeMounts:
         - mountPath: /config
@@ -11489,6 +11814,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -11644,6 +11970,7 @@ spec:
             cpu: 100m
             memory: 64Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
         volumeMounts:
@@ -11672,6 +11999,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -11712,6 +12040,7 @@ spec:
         name: database-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       - args:
@@ -11747,6 +12076,7 @@ spec:
         name: msgbus-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       priorityClassName: system-node-critical
@@ -11864,16 +12194,17 @@ spec:
             cpu: 100m
             memory: 32Mi
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
         volumeMounts:
         - mountPath: /config
           name: config
           readOnly: true
+        - mountPath: /mnt/certificates
+          name: config-certificates
         - mountPath: /ws-manager-client-tls-certs
           name: ws-manager-client-tls-certs
           readOnly: true
-        - mountPath: /mnt/certificates
-          name: config-certificates
       - args:
         - --logtostderr
         - --insecure-listen-address=[$(IP)]:9500
@@ -11893,6 +12224,7 @@ spec:
             cpu: 1m
             memory: 30Mi
         securityContext:
+          allowPrivilegeEscalation: false
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -11914,12 +12246,12 @@ spec:
       - configMap:
           name: ws-proxy
         name: config
-      - name: ws-manager-client-tls-certs
-        secret:
-          secretName: ws-manager-client-tls
       - name: config-certificates
         secret:
           secretName: https-certificates
+      - name: ws-manager-client-tls-certs
+        secret:
+          secretName: ws-manager-client-tls
 status: {}
 ---
 # batch/v1/Job migrations
@@ -12011,6 +12343,8 @@ spec:
         imagePullPolicy: IfNotPresent
         name: migrations
         resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
       enableServiceLinks: false
       initContainers:
       - args:
@@ -12046,6 +12380,7 @@ spec:
         name: database-waiter
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
           privileged: false
           runAsUser: 31001
       restartPolicy: Never
@@ -12098,6 +12433,8 @@ spec:
             imagePullPolicy: IfNotPresent
             name: gitpod-telemetry
             resources: {}
+            securityContext:
+              allowPrivilegeEscalation: false
           enableServiceLinks: false
           initContainers:
           - args:
@@ -12133,6 +12470,7 @@ spec:
             name: database-waiter
             resources: {}
             securityContext:
+              allowPrivilegeEscalation: false
               privileged: false
               runAsUser: 31001
           restartPolicy: OnFailure

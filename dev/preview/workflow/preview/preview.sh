@@ -17,18 +17,18 @@ export TF_INPUT=0
 export TF_IN_AUTOMATION=true
 
 if git:is-on-main; then
-    log_error "We don't support running dev:preview from the main branch. Please switch to another branch."
-    exit 1
+  log_error "We don't support running dev:preview from the main branch. Please switch to another branch."
+  exit 1
 fi
 
 if ! git:branch-exists-remotely; then
-    log_warn "Your branch doesn't exist on GitHub. Your preview environment WILL get garbage collected after AT MOST 1h. To avoid this please push your branch."
-    ask "I've read 👆 and I understand the implications."
+  log_warn "Your branch doesn't exist on GitHub. Your preview environment WILL get garbage collected after AT MOST 1h. To avoid this please push your branch."
+  ask "I've read 👆 and I understand the implications."
 fi
 
+leeway run dev/preview:configure-workspace
 ensure_gcloud_auth
 
-leeway run dev/preview:create-preview
-leeway run dev/preview:build
-previewctl install-context --gcp-service-account "${PREVIEW_ENV_DEV_SA_KEY_PATH}" --retry 30
-leeway run dev/preview:deploy-gitpod
+leeway run dev/preview:create-preview dev/preview:build
+previewctl install-context --gcp-service-account "${PREVIEW_ENV_DEV_SA_KEY_PATH}" --timeout 10m
+leeway run dev/preview:deploy-gitpod dev/preview:deploy-monitoring-satellite

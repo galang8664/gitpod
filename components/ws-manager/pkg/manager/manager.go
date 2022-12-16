@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package manager
 
@@ -203,6 +203,21 @@ func (m *Manager) StartWorkspace(ctx context.Context, req *api.StartWorkspaceReq
 	tracing.ApplyOWI(span, owi)
 	defer tracing.FinishSpan(span, &err)
 
+	defer func(req *api.StartWorkspaceRequest, err *error) {
+		success := true
+		alreadyExists := false
+		if err != nil && *err != nil {
+			success = false
+			if status.Code(*err) == codes.AlreadyExists {
+				alreadyExists = true
+			}
+		}
+		// do not record metrics for already started workspaces
+		if !alreadyExists {
+			m.metrics.OnWorkspaceStarted(req.Type, req.Spec.Class, success)
+		}
+	}(req, &err)
+
 	clog.Info("StartWorkspace")
 	reqs, _ := protojson.Marshal(req)
 	safeReqs, _ := log.RedactJSON(reqs)
@@ -339,6 +354,11 @@ func (m *Manager) StartWorkspace(ctx context.Context, req *api.StartWorkspaceReq
 		return nil, xerrors.Errorf("cannot create secret for workspace pod: %w", err)
 	}
 
+	err = waitForSecretInNamespace(m.Clientset, m.Config.Namespace, podName(startContext.Request))
+	if err != nil && !k8serr.IsAlreadyExists(err) {
+		return nil, xerrors.Errorf("timeout waiting for secret required by workspace pod: %w", err)
+	}
+
 	err = m.Clientset.Create(ctx, pod)
 	if err != nil {
 		m, _ := json.Marshal(pod)
@@ -431,8 +451,6 @@ func (m *Manager) StartWorkspace(ctx context.Context, req *api.StartWorkspaceReq
 		Url:        startContext.WorkspaceURL,
 		OwnerToken: startContext.OwnerToken,
 	}
-
-	m.metrics.OnWorkspaceStarted(req.Type, req.Spec.Class)
 
 	return okResponse, nil
 }
@@ -1713,4 +1731,24 @@ func extractExposedPorts(pod *corev1.Pod) *api.ExposedPorts {
 	}
 
 	return &api.ExposedPorts{}
+}
+
+func waitForSecretInNamespace(client client.Client, namespace, name string) error {
+	return wait.Poll(200*time.Millisecond, 1*time.Minute, secretInNamespace(client, namespace, name))
+}
+
+func secretInNamespace(client client.Client, namespace, name string) wait.ConditionFunc {
+	return func() (bool, error) {
+		var secret corev1.Secret
+		err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, &secret)
+		if k8serr.IsNotFound(err) {
+			return false, nil
+		}
+
+		if err != nil {
+			return false, err
+		}
+
+		return true, nil
+	}
 }

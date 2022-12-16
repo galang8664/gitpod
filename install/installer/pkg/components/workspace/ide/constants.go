@@ -1,12 +1,12 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package ide
 
 const (
 	CodeIDEImage                = "ide/code"
-	CodeIDEImageStableVersion   = "commit-4dabe593cb0c05e25ded443109a3683a22d544ba" // stable version that will be updated manually on demand
+	CodeIDEImageStableVersion   = "commit-73b9682c5040a9fec5a02e066aa48faa635f5ca5" // stable version that will be updated manually on demand
 	CodeDesktopIDEImage         = "ide/code-desktop"
 	CodeDesktopInsidersIDEImage = "ide/code-desktop-insiders"
 	IntelliJDesktopIDEImage     = "ide/intellij"
@@ -18,4 +18,5 @@ const (
 	RiderDesktopIdeImage        = "ide/rider"
 	CLionDesktopIdeImage        = "ide/clion"
 	JetBrainsBackendPluginImage = "ide/jb-backend-plugin"
+	JetBrainsLauncherImage      = "ide/jb-launcher"
 )

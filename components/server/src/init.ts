@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2020 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 //#region heapdump
@@ -107,7 +107,7 @@ log.enableJSONLogging("server", process.env.VERSION, LogrusLogLevel.getFromEnv()
 
 export async function start(container: Container) {
     const tracing = container.get(TracingManager);
-    tracing.setup("server", {
+    tracing.setup(process.env.JAEGER_SERVICE_NAME ?? "server", {
         perOpSampling: {
             createWorkspace: true,
             startWorksace: true,

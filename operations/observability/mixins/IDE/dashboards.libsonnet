@@ -1,6 +1,7 @@
 /**
  * Copyright (c) 2021 Gitpod GmbH. All rights reserved.
- * Licensed under the MIT License. See License-MIT.txt in the project root for license information.
+ * Licensed under the GNU Affero General Public License (AGPL).
+ * See License.AGPL.txt in the project root for license information.
  */
 
 {
@@ -15,5 +16,6 @@
     'gitpod-component-browser-overview.json': (import 'dashboards/components/browser-overview.json'),
     'gitpod-component-code-browser.json': (import 'dashboards/components/code-browser.json'),
     'gitpod-component-ide-startup-time.json': (import 'dashboards/components/ide-startup-time.json'),
+    'gitpod-component-ide-service.json': (import 'dashboards/components/ide-service.json'),
   },
 }

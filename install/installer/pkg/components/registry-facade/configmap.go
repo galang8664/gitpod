@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package registryfacade
 
@@ -88,7 +88,7 @@ func configmap(ctx *common.RenderContext) ([]runtime.Object, error) {
 			IPFSCache:  ipfsCache,
 			RedisCache: redisCache,
 		},
-		AuthCfg:            "/mnt/pull-secret.json",
+		AuthCfg:            "/mnt/pull-secret/pull-secret.json",
 		PProfAddr:          common.LocalhostAddressFromPort(baseserver.BuiltinDebugPort),
 		PrometheusAddr:     common.LocalhostPrometheusAddr(),
 		ReadinessProbeAddr: fmt.Sprintf(":%v", ReadinessPort),

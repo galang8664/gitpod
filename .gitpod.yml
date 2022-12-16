@@ -1,4 +1,4 @@
-image: eu.gcr.io/gitpod-core-dev/dev/dev-environment:mads-remove-adc.9
+image: eu.gcr.io/gitpod-core-dev/dev/dev-environment:mads-hartmann-don-t-store-leeway-15060.0
 workspaceLocation: gitpod/gitpod-ws.code-workspace
 checkoutLocation: gitpod
 ports:
@@ -46,7 +46,7 @@ tasks:
   # with preview environments.
   - name: Preview environment configuration
     init: leeway run dev/preview/previewctl:install
-    command: leeway run dev/preview:configure-workspace
+    command: INSTALL_CONTEXT=true leeway run dev/preview:configure-workspace
   - name: Installer dependencies
     init: |
       (cd install/installer && make deps)
@@ -81,6 +81,7 @@ vscode:
     - fwcd.kotlin
     - dbaeumer.vscode-eslint
     - esbenp.prettier-vscode
+    - akosyakov.gitpod-monitor
 jetbrains:
   goland:
     prebuilds:

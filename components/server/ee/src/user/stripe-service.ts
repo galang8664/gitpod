@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2022 Gitpod GmbH. All rights reserved.
- * Licensed under the Gitpod Enterprise Source Code License,
- * See License.enterprise.txt in the project root folder.
+ * Licensed under the GNU Affero General Public License (AGPL).
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import { inject, injectable } from "inversify";
@@ -79,7 +79,11 @@ export class StripeService {
             });
         });
         if (result.data.length > 1) {
-            throw new Error(`Stripe customer '${customerId}') has more than one subscription!`);
+            log.error(`Stripe customer has more than one subscription!`, {
+                attributionId,
+                customerId,
+                subscriptions: result.data.map((s) => s.id),
+            });
         }
         return result.data[0]?.id;
     }

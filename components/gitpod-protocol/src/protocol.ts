@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2020 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import { WorkspaceInstance, PortVisibility } from "./workspace-instance";
@@ -255,8 +255,8 @@ export type IDESettings = {
 };
 
 export interface WorkspaceClasses {
-    regular: string;
-    prebuild: string;
+    regular?: string;
+    prebuild?: string;
 }
 
 export interface UserPlatform {

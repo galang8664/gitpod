@@ -1,12 +1,10 @@
 import * as fs from "fs";
 import { exec } from "../../util/shell";
 import { MonitoringSatelliteInstaller } from "../../observability/monitoring-satellite";
-
 import { Werft } from "../../util/werft";
 import { Analytics, JobConfig } from "./job-config";
 import * as VM from "../../vm/vm";
 import { Installer } from "./installer/installer";
-import { previewNameFromBranchName } from "../../util/preview";
 
 // used by Installer
 const STACKDRIVER_SERVICEACCOUNT = JSON.parse(
@@ -72,8 +70,8 @@ export async function deployToPreviewEnvironment(werft: Werft, jobConfig: JobCon
     VM.waitForVMReadiness({ name: destname, timeoutSeconds: 60 * 10, slice: vmSlices.VM_READINESS });
     werft.done(vmSlices.VM_READINESS);
 
-    werft.log(vmSlices.KUBECONFIG, "Copying k3s kubeconfig");
-    VM.copyk3sKubeconfigShell({ name: destname, timeoutMS: 1000 * 60 * 6, slice: vmSlices.KUBECONFIG });
+    werft.log(vmSlices.KUBECONFIG, "Installing preview context");
+    await VM.installPreviewContext({ name: destname, slice: vmSlices.KUBECONFIG });
     werft.done(vmSlices.KUBECONFIG);
 
     werft.phase(phases.DEPLOY, "Deploying Gitpod and Observability Stack");
@@ -82,7 +80,7 @@ export async function deployToPreviewEnvironment(werft: Werft, jobConfig: JobCon
         const sliceID = "Install monitoring satellite";
         const monitoringSatelliteInstaller = new MonitoringSatelliteInstaller({
             branch: jobConfig.observability.branch,
-            previewName: previewNameFromBranchName(jobConfig.repository.branch),
+            previewName: exec(`previewctl get name --branch=${jobConfig.repository.branch}`).stdout.trim(),
             stackdriverServiceAccount: STACKDRIVER_SERVICEACCOUNT,
             werft: werft,
         });

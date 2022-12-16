@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package wsmanagerbridge
 
@@ -24,6 +24,10 @@ func WSManagerList(ctx *common.RenderContext) []WorkspaceCluster {
 	_ = ctx.WithExperimental(func(cfg *experimental.Config) error {
 		if cfg.WebApp != nil && cfg.WebApp.WorkspaceManagerBridge != nil {
 			skipSelf = cfg.WebApp.WorkspaceManagerBridge.SkipSelf
+		}
+		if cfg.WebApp != nil && cfg.WebApp.WithoutWorkspaceComponents {
+			// Must skip self if cluster does not contain ws-manager.
+			skipSelf = true
 		}
 		return nil
 	})

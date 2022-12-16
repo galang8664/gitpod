@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2022 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import { useState, useContext, useEffect } from "react";
@@ -185,7 +185,7 @@ export default function UsageBasedBillingConfig({ attributionId }: Props) {
     }, [attributionId, billingCycleFrom]);
 
     const showSpinner = !attributionId || isLoadingStripeSubscription || !!pendingStripeSubscription;
-    const showBalance = !showSpinner && !(AttributionId.parse(attributionId)?.kind === "team" && !stripeSubscriptionId);
+    const showBalance = !showSpinner;
     const showUpgradeTeam =
         !showSpinner && AttributionId.parse(attributionId)?.kind === "team" && !stripeSubscriptionId;
     const showUpgradeUser =
@@ -207,11 +207,15 @@ export default function UsageBasedBillingConfig({ attributionId }: Props) {
     };
 
     const balance = currentUsage * -1 + usageLimit;
-    const percentage = Math.max(Math.round((balance * 100) / usageLimit), 0);
+    const percentage = usageLimit === 0 ? 0 : Math.max(Math.round((balance * 100) / usageLimit), 0);
 
     return (
         <div className="mb-16">
-            <h2 className="text-gray-500">Manage pay-as-you-go billing.</h2>
+            <h2 className="text-gray-500">
+                {attributionId && AttributionId.parse(attributionId)?.kind === "user"
+                    ? "Manage billing for your personal account."
+                    : "Manage billing for your team."}
+            </h2>
             <div className="max-w-xl flex flex-col">
                 {errorMessage && (
                     <Alert className="max-w-xl mt-2" closable={false} showIcon={true} type="error">
@@ -228,23 +232,25 @@ export default function UsageBasedBillingConfig({ attributionId }: Props) {
                     <div className="flex flex-col mt-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800">
                         <div className="uppercase text-sm text-gray-400 dark:text-gray-500">Balance</div>
                         <div className="mt-1 text-xl font-semibold flex-grow">
-                            <span className="text-gray-900 dark:text-gray-100">{balance}</span>
+                            <span className="text-gray-900 dark:text-gray-100">
+                                {balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            </span>
                             <span className="text-gray-400 dark:text-gray-500"> Credits</span>
                         </div>
                         <div className="mt-4 text-sm flex text-gray-400 dark:text-gray-500">
                             <span className="flex-grow">
-                                <span>Monthly limit: {usageLimit} Credits</span>
-                                {showManageBilling && (
-                                    <>
-                                        <span>&nbsp;&middot;&nbsp;</span>
-                                        <span className="gp-link" onClick={() => setShowUpdateLimitModal(true)}>
-                                            Update limit
-                                        </span>
-                                    </>
-                                )}
+                                {typeof currentUsage === "number" &&
+                                    typeof usageLimit === "number" &&
+                                    usageLimit > 0 && <span>{percentage}% remaining</span>}
                             </span>
-                            {typeof currentUsage === "number" && typeof usageLimit === "number" && usageLimit > 0 && (
-                                <span>{percentage}% remaining</span>
+                            <span>Monthly limit: {usageLimit} Credits</span>
+                            {showManageBilling && (
+                                <>
+                                    <span>&nbsp;&middot;&nbsp;</span>
+                                    <span className="gp-link" onClick={() => setShowUpdateLimitModal(true)}>
+                                        Update limit
+                                    </span>
+                                </>
                             )}
                         </div>
                         <div className="mt-2 flex">
@@ -286,12 +292,9 @@ export default function UsageBasedBillingConfig({ attributionId }: Props) {
                             <div className="flex flex-col">
                                 <span>
                                     {currency === "EUR" ? "€" : "$"}0.36 for 10 credits or 1 hour of Standard workspace
-                                    usage.{" "}
-                                    <a
-                                        className="gp-link"
-                                        href="https://www.gitpod.io/docs/configure/billing/usage-based-billing"
-                                    >
-                                        Learn more about credits
+                                    usage, excluding VAT.{" "}
+                                    <a className="gp-link" href="https://www.gitpod.io/pricing#cost-estimator">
+                                        Estimate costs
                                     </a>
                                 </span>
                             </div>
@@ -313,11 +316,8 @@ export default function UsageBasedBillingConfig({ attributionId }: Props) {
                                 <span className="font-bold text-gray-500 dark:text-gray-400">{usageLimit} credits</span>
                                 <span>
                                     {usageLimit / 10} hours of Standard workspace usage.{" "}
-                                    <a
-                                        className="gp-link"
-                                        href="https://www.gitpod.io/docs/configure/billing/usage-based-billing"
-                                    >
-                                        Learn more about credits
+                                    <a className="gp-link" href="https://www.gitpod.io/pricing#cost-estimator">
+                                        Estimate costs
                                     </a>
                                 </span>
                             </div>
@@ -339,7 +339,7 @@ export default function UsageBasedBillingConfig({ attributionId }: Props) {
                                     <span className="font-bold">Pay-as-you-go after 1,000 credits</span>
                                     <span>
                                         {currency === "EUR" ? "€" : "$"}0.36 for 10 credits or 1 hour of Standard
-                                        workspace usage.
+                                        workspace usage, excluding VAT.
                                     </span>
                                 </div>
                             </div>
@@ -385,7 +385,7 @@ export default function UsageBasedBillingConfig({ attributionId }: Props) {
                                             </span>
                                             <span>
                                                 {currency === "EUR" ? "€" : "$"}0.36 for 10 credits or 1 hour of
-                                                Standard workspace usage.
+                                                Standard workspace usage, excluding VAT.
                                             </span>
                                         </div>
                                     </div>
@@ -400,7 +400,7 @@ export default function UsageBasedBillingConfig({ attributionId }: Props) {
                                         <div className="flex flex-col">
                                             <span>
                                                 {currency === "EUR" ? "€" : "$"}0.36 for 10 credits or 1 hour of
-                                                Standard workspace usage.{" "}
+                                                Standard workspace usage, excluding VAT.{" "}
                                                 <a
                                                     className="gp-link"
                                                     href="https://www.gitpod.io/docs/configure/billing/usage-based-billing"

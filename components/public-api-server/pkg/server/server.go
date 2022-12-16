@@ -1,6 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package server
 
@@ -49,6 +49,7 @@ func Start(logger *logrus.Entry, version string, cfg *config.Configuration) erro
 		Password: os.Getenv("DB_PASSWORD"),
 		Host:     net.JoinHostPort(os.Getenv("DB_HOST"), os.Getenv("DB_PORT")),
 		Database: "gitpod",
+		CaCert:   os.Getenv("DB_CA_CERT"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to establish database connection: %w", err)
@@ -103,7 +104,7 @@ func Start(logger *logrus.Entry, version string, cfg *config.Configuration) erro
 	}
 
 	if listenErr := srv.ListenAndServe(); listenErr != nil {
-		return fmt.Errorf("failed to serve public api server: %w", err)
+		return fmt.Errorf("failed to serve public api server: %w", listenErr)
 	}
 
 	return nil
@@ -145,6 +146,9 @@ func register(srv *baseserver.Server, connPool proxy.ServerConnectionPool, expCl
 
 	projectsRoute, projectsServiceHandler := v1connect.NewProjectsServiceHandler(apiv1.NewProjectsService(connPool), handlerOptions...)
 	srv.HTTPMux().Handle(projectsRoute, projectsServiceHandler)
+
+	oidcRoute, oidcServiceHandler := v1connect.NewOIDCServiceHandler(apiv1.NewOIDCService(connPool, expClient), handlerOptions...)
+	srv.HTTPMux().Handle(oidcRoute, oidcServiceHandler)
 
 	return nil
 }

@@ -1,7 +1,7 @@
 /**
- * Copyright (c) 2020 Gitpod GmbH. All rights reserved.
- * Licensed under the Gitpod Enterprise Source Code License,
- * See License.enterprise.txt in the project root folder.
+ * Copyright (c) 2022 Gitpod GmbH. All rights reserved.
+ * Licensed under the GNU Affero General Public License (AGPL).
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import { injectable, inject } from "inversify";
@@ -2155,17 +2155,15 @@ export class GitpodServerEEImpl extends GitpodServerImpl {
         try {
             customer = (await this.billingService.getStripeCustomer({ attributionId })).customer;
         } catch (e) {
-            console.error(e);
+            log.error(e);
         }
         if (customer) {
             // NOTE: this is a temporary workaround, as long as we're not automatically re-create the customer
             // entity on Stripe to support a switch of currencies, we're taking an exit here.
-            if (customer.currency !== currency) {
+            if (customer.currency && customer.currency !== currency) {
                 throw new ResponseError(
                     ErrorCodes.SUBSCRIPTION_ERROR,
-                    `Your previous subscription was in ${
-                        customer.currency || "unknown"
-                    }. If you'd like to change currencies, please contact our support.`,
+                    `Your previous subscription was in ${customer.currency}. If you'd like to change currencies, please contact our support.`,
                     { hint: "currency", oldValue: customer.currency, value: currency },
                 );
             }
@@ -2173,7 +2171,7 @@ export class GitpodServerEEImpl extends GitpodServerImpl {
             return;
         }
 
-        // otherwise we need to create a new costomer.
+        // otherwise we need to create a new customer.
         try {
             await this.billingService.createStripeCustomer({
                 attributionId,

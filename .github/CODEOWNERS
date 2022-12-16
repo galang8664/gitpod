@@ -49,6 +49,8 @@
 /install/installer/pkg/components/proxy @gitpod-io/engineering-webapp
 /install/installer/pkg/components/registry-facade @gitpod-io/engineering-workspace
 /install/installer/pkg/components/public-api-server @gitpod-io/engineering-webapp
+/install/installer/pkg/components/iam @gitpod-io/engineering-webapp
+/install/installer/pkg/components/iam-api @gitpod-io/engineering-webapp
 /install/installer/pkg/components/server @gitpod-io/engineering-webapp
 /install/installer/pkg/components/server/ide @gitpod-io/engineering-ide
 /install/installer/pkg/components/usage @gitpod-io/engineering-webapp
@@ -74,6 +76,7 @@
 /components/registry-facade-api @csweichel @aledbf
 /components/registry-facade @gitpod-io/engineering-workspace
 /components/server @gitpod-io/engineering-webapp
+/components/server/src/ide-service.* @gitpod-io/engineering-ide
 /components/service-waiter @gitpod-io/engineering-webapp
 /components/supervisor-api/*.proto @csweichel @akosyakov
 /components/supervisor @gitpod-io/engineering-ide

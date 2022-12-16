@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 // experimental bundles all internal bits of configuration for which we do not offer
 // support. We use those flags internally to operate SaaS, but do not expect anyone
@@ -188,19 +188,20 @@ type IAMConfig struct {
 }
 
 type WebAppConfig struct {
-	PublicAPI              *PublicAPIConfig       `json:"publicApi,omitempty"`
-	Server                 *ServerConfig          `json:"server,omitempty"`
-	ProxyConfig            *ProxyConfig           `json:"proxy,omitempty"`
-	WorkspaceManagerBridge *WsManagerBridgeConfig `json:"wsManagerBridge,omitempty"`
-	Tracing                *Tracing               `json:"tracing,omitempty"`
-	UsePodAntiAffinity     bool                   `json:"usePodAntiAffinity"`
-	DisableMigration       bool                   `json:"disableMigration"`
-	Usage                  *UsageConfig           `json:"usage,omitempty"`
-	ConfigcatKey           string                 `json:"configcatKey"`
-	WorkspaceClasses       []WebAppWorkspaceClass `json:"workspaceClasses"`
-	Stripe                 *StripeConfig          `json:"stripe,omitempty"`
-	SlowDatabase           bool                   `json:"slowDatabase,omitempty"`
-	IAM                    *IAMConfig             `json:"iam,omitempty"`
+	PublicAPI                  *PublicAPIConfig       `json:"publicApi,omitempty"`
+	Server                     *ServerConfig          `json:"server,omitempty"`
+	ProxyConfig                *ProxyConfig           `json:"proxy,omitempty"`
+	WorkspaceManagerBridge     *WsManagerBridgeConfig `json:"wsManagerBridge,omitempty"`
+	Tracing                    *Tracing               `json:"tracing,omitempty"`
+	UsePodAntiAffinity         bool                   `json:"usePodAntiAffinity"`
+	DisableMigration           bool                   `json:"disableMigration"`
+	Usage                      *UsageConfig           `json:"usage,omitempty"`
+	ConfigcatKey               string                 `json:"configcatKey"`
+	WorkspaceClasses           []WebAppWorkspaceClass `json:"workspaceClasses"`
+	Stripe                     *StripeConfig          `json:"stripe,omitempty"`
+	SlowDatabase               bool                   `json:"slowDatabase,omitempty"`
+	IAM                        *IAMConfig             `json:"iam,omitempty"`
+	WithoutWorkspaceComponents bool                   `json:"withoutWorkspaceComponents,omitempty"`
 }
 
 type WorkspaceDefaults struct {

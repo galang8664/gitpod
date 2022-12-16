@@ -1,6 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 const ideConfigs = [
     {
@@ -54,8 +54,8 @@ const generateIDEBuildPackage = function (ideConfig, qualifier) {
     let pkg = {
         name,
         type: "docker",
-        srcs: ["startup.sh", `supervisor-ide-config_${ideConfig.name}.json`],
-        deps: ["components/ide/jetbrains/image/status:app", `:download-${name}`, "components/ide/jetbrains/cli:app"],
+        srcs: ["startup.sh", `supervisor-ide-config_${name}.json`],
+        deps: [`:download-${name}`, "components/ide/jetbrains/cli:app"],
         config: {
             dockerfile: "leeway.Dockerfile",
             metadata: {
@@ -63,7 +63,7 @@ const generateIDEBuildPackage = function (ideConfig, qualifier) {
             },
             buildArgs: {
                 JETBRAINS_DOWNLOAD_QUALIFIER: name,
-                SUPERVISOR_IDE_CONFIG: `supervisor-ide-config_${ideConfig.name}.json`,
+                SUPERVISOR_IDE_CONFIG: `supervisor-ide-config_${name}.json`,
                 JETBRAINS_BACKEND_QUALIFIER: qualifier,
                 JETBRAINS_BACKEND_VERSION: getIDEVersion(qualifier, args[`${ideConfig.name}DownloadUrl`]),
             },

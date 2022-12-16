@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package registryfacade
 
@@ -230,8 +230,9 @@ func daemonset(ctx *common.RenderContext) ([]runtime.Object, error) {
 							HostPort:      ServicePort,
 						}},
 						SecurityContext: &corev1.SecurityContext{
-							Privileged: pointer.Bool(false),
-							RunAsUser:  pointer.Int64(1000),
+							Privileged:               pointer.Bool(false),
+							AllowPrivilegeEscalation: pointer.Bool(false),
+							RunAsUser:                pointer.Int64(1000),
 						},
 						Env: common.CustomizeEnvvar(ctx, Component, common.MergeEnv(
 							common.DefaultEnv(&ctx.Config),
@@ -263,8 +264,7 @@ func daemonset(ctx *common.RenderContext) ([]runtime.Object, error) {
 								},
 								{
 									Name:      name,
-									MountPath: "/mnt/pull-secret.json",
-									SubPath:   ".dockerconfigjson",
+									MountPath: "/mnt/pull-secret",
 								},
 							},
 							volumeMounts...,
@@ -309,6 +309,19 @@ func daemonset(ctx *common.RenderContext) ([]runtime.Object, error) {
 								common.NodeNameEnv(ctx),
 								common.ProxyEnv(&ctx.Config),
 							)),
+							LivenessProbe: &corev1.Probe{
+								ProbeHandler: corev1.ProbeHandler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path: "/ready",
+										Port: intstr.IntOrString{IntVal: ReadinessPort},
+									},
+								},
+								InitialDelaySeconds: 5,
+								PeriodSeconds:       2,
+								TimeoutSeconds:      2,
+								SuccessThreshold:    1,
+								FailureThreshold:    3,
+							},
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Lifecycle: &corev1.Lifecycle{
 								PreStop: &corev1.LifecycleHandler{
@@ -343,6 +356,7 @@ func daemonset(ctx *common.RenderContext) ([]runtime.Object, error) {
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
 								SecretName: secretName,
+								Items:      []corev1.KeyToPath{{Key: ".dockerconfigjson", Path: "pull-secret.json"}},
 							},
 						},
 					}, {

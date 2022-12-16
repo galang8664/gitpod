@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package common
 
@@ -344,7 +344,53 @@ func DatabaseEnv(cfg *config.Config) (res []corev1.EnvVar) {
 		},
 	)
 
+	if cfg.Database.SSL != nil && cfg.Database.SSL.CaCert != nil {
+		secretRef = corev1.LocalObjectReference{Name: cfg.Database.SSL.CaCert.Name}
+		envvars = append(envvars, corev1.EnvVar{
+			Name: DBCaCertEnvVarName,
+			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: secretRef,
+				Key:                  DBCaFileName,
+			}},
+		})
+	}
+
 	return envvars
+}
+
+func DatabaseEnvSecret(cfg config.Config) (corev1.Volume, corev1.VolumeMount, string) {
+	var secretName string
+
+	if pointer.BoolDeref(cfg.Database.InCluster, false) {
+		secretName = InClusterDbSecret
+	} else if cfg.Database.External != nil && cfg.Database.External.Certificate.Name != "" {
+		// External DB
+		secretName = cfg.Database.External.Certificate.Name
+
+	} else if cfg.Database.CloudSQL != nil && cfg.Database.CloudSQL.ServiceAccount.Name != "" {
+		// GCP
+		secretName = cfg.Database.CloudSQL.ServiceAccount.Name
+
+	} else {
+		panic("invalid database configuration")
+	}
+
+	volume := corev1.Volume{
+		Name: "database-config",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: secretName,
+			},
+		},
+	}
+
+	mount := corev1.VolumeMount{
+		Name:      "database-config",
+		MountPath: DatabaseConfigMountPath,
+		ReadOnly:  true,
+	}
+
+	return volume, mount, DatabaseConfigMountPath
 }
 
 func ConfigcatEnv(ctx *RenderContext) []corev1.EnvVar {
@@ -414,8 +460,9 @@ func DatabaseWaiterContainer(ctx *RenderContext) *corev1.Container {
 			"database",
 		},
 		SecurityContext: &corev1.SecurityContext{
-			Privileged: pointer.Bool(false),
-			RunAsUser:  pointer.Int64(31001),
+			Privileged:               pointer.Bool(false),
+			AllowPrivilegeEscalation: pointer.Bool(false),
+			RunAsUser:                pointer.Int64(31001),
 		},
 		Env: MergeEnv(
 			DatabaseEnv(&ctx.Config),
@@ -433,8 +480,9 @@ func MessageBusWaiterContainer(ctx *RenderContext) *corev1.Container {
 			"messagebus",
 		},
 		SecurityContext: &corev1.SecurityContext{
-			Privileged: pointer.Bool(false),
-			RunAsUser:  pointer.Int64(31001),
+			Privileged:               pointer.Bool(false),
+			AllowPrivilegeEscalation: pointer.Bool(false),
+			RunAsUser:                pointer.Int64(31001),
 		},
 		Env: MergeEnv(
 			MessageBusEnv(&ctx.Config),
@@ -478,9 +526,10 @@ func KubeRBACProxyContainerWithConfig(ctx *RenderContext) *corev1.Container {
 		}},
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		SecurityContext: &corev1.SecurityContext{
-			RunAsUser:    pointer.Int64(65532),
-			RunAsGroup:   pointer.Int64(65532),
-			RunAsNonRoot: pointer.Bool(true),
+			AllowPrivilegeEscalation: pointer.Bool(false),
+			RunAsUser:                pointer.Int64(65532),
+			RunAsGroup:               pointer.Int64(65532),
+			RunAsNonRoot:             pointer.Bool(true),
 		},
 	}
 }

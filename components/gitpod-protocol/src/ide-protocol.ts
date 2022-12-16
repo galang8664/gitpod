@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2021 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 /**
@@ -87,7 +87,7 @@ export interface IDEOption {
     label?: string;
 
     /**
-     * Notes to the IDE option that are renderd in the preferences when a user
+     * Notes to the IDE option that are rendered in the preferences when a user
      * chooses this IDE.
      */
     notes?: string[];
@@ -126,4 +126,14 @@ export interface IDEOption {
      * The latest plugin image ref for the latest IDE image, this image ref always resolve to digest.
      */
     pluginLatestImage?: string;
+
+    /**
+     * ImageVersion the semantic version of the IDE image.
+     */
+    imageVersion?: string;
+
+    /**
+     * LatestImageVersion the semantic version of the latest IDE image.
+     */
+    latestImageVersion?: string;
 }

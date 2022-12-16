@@ -1,5 +1,6 @@
 // Copyright (c) 2022 Gitpod GmbH. All rights reserved.
-// Licensed under the MIT License. See License-MIT.txt in the project root for license information.
+/// Licensed under the GNU Affero General Public License (AGPL).
+// See License.AGPL.txt in the project root for license information.
 
 package toxiproxy
 
@@ -99,7 +100,8 @@ func deployment(ctx *common.RenderContext) ([]runtime.Object, error) {
 								ContainerPort: HttpContainerPort,
 							}},
 							SecurityContext: &corev1.SecurityContext{
-								Privileged: pointer.Bool(false),
+								Privileged:               pointer.Bool(false),
+								AllowPrivilegeEscalation: pointer.Bool(false),
 							},
 							Env:          common.CustomizeEnvvar(ctx, Component, common.MergeEnv(common.DefaultEnv(&ctx.Config))),
 							VolumeMounts: volumeMounts,
@@ -114,6 +116,9 @@ func deployment(ctx *common.RenderContext) ([]runtime.Object, error) {
 								"--latency=280",
 								"--jitter=25",
 								"--wait=true",
+							},
+							SecurityContext: &corev1.SecurityContext{
+								AllowPrivilegeEscalation: pointer.Bool(false),
 							},
 						},
 							*common.KubeRBACProxyContainerWithConfig(ctx),

@@ -1,5 +1,6 @@
 # Copyright (c) 2022 Gitpod GmbH. All rights reserved.
-# Licensed under the MIT License. See License-MIT.txt in the project root for license information.
+# Licensed under the GNU Affero General Public License (AGPL).
+# See License.AGPL.txt in the project root for license information.
 
 commit: 5c9e6394c1372f4c73031671ae786909a85d5730
 version: pd-ide-metrics.23
@@ -49,6 +50,8 @@ components:
   proxy:
     version: test
   public-api-server:
+    version: test
+  refreshCredential:
     version: test
   registryFacade:
     version: test
@@ -103,6 +106,8 @@ components:
       jbBackendPlugin:
         version: test
       jbBackendPluginLatest:
+        version: test
+      jbLauncher:
         version: test
       version: test
     dockerUp:

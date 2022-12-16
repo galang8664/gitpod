@@ -8,18 +8,17 @@ ROOT="${SCRIPT_PATH}/../../../../"
 
 # shellcheck source=../lib/common.sh
 source "$(realpath "${SCRIPT_PATH}/../lib/common.sh")"
-# shellcheck source=../../util/preview-name-from-branch.sh
-source "$(realpath "${SCRIPT_PATH}/../../util/preview-name-from-branch.sh")"
 # shellcheck source=../lib/k8s-util.sh
 source "$(realpath "${SCRIPT_PATH}/../lib/k8s-util.sh")"
 
 DEV_KUBE_PATH="${DEV_KUBE_PATH:-/home/gitpod/.kube/config}"
 DEV_KUBE_CONTEXT="${DEV_KUBE_CONTEXT:-dev}"
 
-PREVIEW_NAME="${PREVIEW_NAME:-$(preview-name-from-branch)}"
+PREVIEW_NAME="${PREVIEW_NAME:-$(previewctl get name)}"
 PREVIEW_K3S_KUBE_PATH="${PREVIEW_K3S_KUBECONFIG_PATH:-/home/gitpod/.kube/config}"
 PREVIEW_K3S_KUBE_CONTEXT="${PREVIEW_K3S_KUBE_CONTEXT:-$PREVIEW_NAME}"
 PREVIEW_NAMESPACE="default"
+PREVIEW_SORUCE_CERT_NAME="harvester-${PREVIEW_NAME}"
 
 GITPOD_AGENT_SMITH_TOKEN="$(openssl rand -hex 30)"
 GITPOD_AGENT_SMITH_TOKEN_HASH="$(echo -n "$GITPOD_AGENT_SMITH_TOKEN" | sha256sum - | tr -d '  -')"
@@ -71,19 +70,18 @@ fi
 
 function copyCachedCertificate {
   CERTS_NAMESPACE="certs"
-  SORUCE_CERT_NAME="harvester-${PREVIEW_NAME}"
   DESTINATION_CERT_NAME="$GITPOD_PROXY_SECRET_NAME"
 
   kubectl \
     --kubeconfig "${DEV_KUBE_PATH}" \
     --context "${DEV_KUBE_CONTEXT}" \
-    get secret "${SORUCE_CERT_NAME}" --namespace="${CERTS_NAMESPACE}" -o yaml \
+    get secret "${PREVIEW_SORUCE_CERT_NAME}" --namespace="${CERTS_NAMESPACE}" -o yaml \
   | yq d - 'metadata.namespace' \
   | yq d - 'metadata.uid' \
   | yq d - 'metadata.resourceVersion' \
   | yq d - 'metadata.creationTimestamp' \
   | yq d - 'metadata.ownerReferences' \
-  | sed "s/${SORUCE_CERT_NAME}/${DESTINATION_CERT_NAME}/g" \
+  | sed "s/${PREVIEW_SORUCE_CERT_NAME}/${DESTINATION_CERT_NAME}/g" \
   | kubectl \
       --kubeconfig "${PREVIEW_K3S_KUBE_PATH}" \
       --context "${PREVIEW_K3S_KUBE_CONTEXT}" \
@@ -207,7 +205,17 @@ waitUntilAllPodsAreReady "${PREVIEW_K3S_KUBE_PATH}" "${PREVIEW_K3S_KUBE_CONTEXT}
 waitUntilAllPodsAreReady "${PREVIEW_K3S_KUBE_PATH}" "${PREVIEW_K3S_KUBE_CONTEXT}" "cert-manager"
 
 # Note: These should ideally be handled by `leeway run dev/preview:create`
-copyCachedCertificate
+tries=0
+while ! copyCachedCertificate; do
+  if [[ ${tries} -gt 30 ]]; then
+    log_error "Failed to find certificate ${PREVIEW_SORUCE_CERT_NAME}"
+    exit 1
+  fi
+  log_info "Certificate ${PREVIEW_SORUCE_CERT_NAME} is not yet present. Sleeping 10 seconds. Attempt number ${tries}"
+  sleep 10
+  tries=$((tries + 1))
+done
+
 copyImagePullSecret
 installRookCeph
 installFluentBit

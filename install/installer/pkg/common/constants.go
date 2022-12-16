@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package common
 
@@ -38,8 +38,10 @@ const (
 	RegistryFacadeServicePort   = 20000
 	RegistryFacadeTLSCertSecret = "builtin-registry-facade-cert"
 	ServerComponent             = "server"
+	SlowServerComponent         = "slow-server"
 	ServerInstallationAdminPort = 9000
 	SystemNodeCritical          = "system-node-critical"
+	PaymentEndpointComponent    = "payment-endpoint"
 	PublicApiComponent          = "public-api-server"
 	WSManagerComponent          = "ws-manager"
 	WSManagerBridgeComponent    = "ws-manager-bridge"
@@ -47,8 +49,14 @@ const (
 	ImageBuilderComponent       = "image-builder-mk3"
 	ImageBuilderRPCPort         = 8080
 	DebugNodePort               = 9229
+	DBCaCertEnvVarName          = "DB_CA_CERT"
+	DBCaFileName                = "ca.crt"
+	DBCaBasePath                = "/db-ssl"
+	DBCaPath                    = DBCaBasePath + "/" + DBCaFileName
 
 	AnnotationConfigChecksum = "gitpod.io/checksum_config"
+
+	DatabaseConfigMountPath = "/secrets/database-config"
 )
 
 var (

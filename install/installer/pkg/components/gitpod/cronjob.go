@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package gitpod
 
@@ -67,6 +67,9 @@ func cronjob(ctx *common.RenderContext) ([]runtime.Object, error) {
 										ImagePullPolicy: v1.PullIfNotPresent,
 										Args: []string{
 											"send",
+										},
+										SecurityContext: &v1.SecurityContext{
+											AllowPrivilegeEscalation: pointer.Bool(false),
 										},
 										Env: []v1.EnvVar{
 											{

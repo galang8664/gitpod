@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2021 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import * as prometheusClient from "prom-client";
@@ -30,7 +30,15 @@ const loginCounter = new prometheusClient.Counter({
     labelNames: ["status", "auth_host"],
 });
 
-export function increaseLoginCounter(status: string, auth_host: string) {
+type LoginCounterStatus =
+    // The login attempt failed due to a system error (picked up by alerts)
+    | "failed"
+    // The login attempt succeeded
+    | "succeeded"
+    // The login attempt failed, because the client failed to provide complete session information, for instance.
+    | "failed_client";
+
+export function increaseLoginCounter(status: LoginCounterStatus, auth_host: string) {
     loginCounter.inc({
         status,
         auth_host,

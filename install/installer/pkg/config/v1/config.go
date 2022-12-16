@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package config
 
@@ -232,6 +232,7 @@ type Database struct {
 	InCluster *bool             `json:"inCluster,omitempty"`
 	External  *DatabaseExternal `json:"external,omitempty"`
 	CloudSQL  *DatabaseCloudSQL `json:"cloudSQL,omitempty"`
+	SSL       *SSLOptions       `json:"ssl,omitempty"`
 }
 
 type DatabaseExternal struct {
@@ -241,6 +242,10 @@ type DatabaseExternal struct {
 type DatabaseCloudSQL struct {
 	ServiceAccount ObjectRef `json:"serviceAccount"`
 	Instance       string    `json:"instance" validate:"required"`
+}
+
+type SSLOptions struct {
+	CaCert *ObjectRef `json:"caCert,omitempty"`
 }
 
 type ObjectStorage struct {
@@ -258,9 +263,7 @@ type ObjectStorageS3 struct {
 	Endpoint    string    `json:"endpoint" validate:"required"`
 	Credentials ObjectRef `json:"credentials" validate:"required"`
 
-	// BucketName sets the name of an existing bucket to enable the "single bucket mode"
-	// If no name is configured, the old "one bucket per user" behaviour kicks in.
-	BucketName string `json:"bucket"`
+	BucketName string `json:"bucket" validate:"required"`
 
 	AllowInsecureConnection bool `json:"allowInsecureConnection"`
 }
@@ -303,8 +306,9 @@ type ContainerRegistry struct {
 }
 
 type ContainerRegistryExternal struct {
-	URL         string    `json:"url" validate:"required"`
-	Certificate ObjectRef `json:"certificate" validate:"required"`
+	URL         string     `json:"url" validate:"required"`
+	Certificate ObjectRef  `json:"certificate" validate:"required"`
+	Credentials *ObjectRef `json:"credentials,omitempty"`
 }
 
 type S3Storage struct {

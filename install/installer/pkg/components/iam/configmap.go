@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package iam
 
@@ -22,6 +22,8 @@ const (
 
 func configmap(ctx *common.RenderContext) ([]runtime.Object, error) {
 
+	_, _, databaseSecretMountPath := common.DatabaseEnvSecret(ctx.Config)
+
 	cfg := config.ServiceConfig{
 		Server: &baseserver.Configuration{
 			Services: baseserver.ServicesConfiguration{
@@ -33,6 +35,8 @@ func configmap(ctx *common.RenderContext) ([]runtime.Object, error) {
 				},
 			},
 		},
+
+		DatabaseConfigPath: databaseSecretMountPath,
 	}
 
 	fc, err := common.ToJSONString(cfg)

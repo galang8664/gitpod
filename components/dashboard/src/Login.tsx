@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2021 Gitpod GmbH. All rights reserved.
  * Licensed under the GNU Affero General Public License (AGPL).
- * See License-AGPL.txt in the project root for license information.
+ * See License.AGPL.txt in the project root for license information.
  */
 
 import { AuthProviderInfo } from "@gitpod/gitpod-protocol";
@@ -21,7 +21,7 @@ import customize from "./images/welcome/customize.svg";
 import fresh from "./images/welcome/fresh.svg";
 import prebuild from "./images/welcome/prebuild.svg";
 import exclamation from "./images/exclamation.svg";
-import { getURLHash } from "./App";
+import { getURLHash } from "./utils";
 import ErrorMessage from "./components/ErrorMessage";
 import { FeatureFlagContext } from "./contexts/FeatureFlagContext";
 import { publicApiTeamsToProtocol, teamsService } from "./service/public-api";

@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package cmd
 
@@ -125,7 +125,8 @@ func renderAllKubernetesObject(cfgVersion string, cfg *configv1.Config) ([]strin
 			cfg.ObjectStorage = configv1.ObjectStorage{
 				InCluster: pointer.Bool(false),
 				S3: &configv1.ObjectStorageS3{
-					Endpoint: "endpoint",
+					Endpoint:   "endpoint",
+					BucketName: "some-bucket",
 					Credentials: configv1.ObjectRef{
 						Kind: configv1.ObjectRefSecret,
 						Name: "value",

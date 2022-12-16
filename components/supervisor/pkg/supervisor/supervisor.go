@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package supervisor
 
@@ -24,6 +24,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -56,6 +57,7 @@ import (
 	"github.com/gitpod-io/gitpod/supervisor/pkg/dropwriter"
 	"github.com/gitpod-io/gitpod/supervisor/pkg/metrics"
 	"github.com/gitpod-io/gitpod/supervisor/pkg/ports"
+	"github.com/gitpod-io/gitpod/supervisor/pkg/serverapi"
 	"github.com/gitpod-io/gitpod/supervisor/pkg/terminal"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -118,9 +120,6 @@ const (
 )
 
 const (
-	// KindGitpod marks tokens that provide access to the Gitpod server API.
-	KindGitpod = "gitpod"
-
 	// KindGit marks any kind of Git access token.
 	KindGit = "git"
 )
@@ -153,6 +152,16 @@ func (s IDEKind) String() string {
 func Run(options ...RunOption) {
 	exitCode := 0
 	defer handleExit(&exitCode)
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		log.WithField("cause", r).WithField("stack", string(debug.Stack())).Error("panicked")
+		if exitCode == 0 {
+			exitCode = 1
+		}
+	}()
 
 	opts := runOptions{
 		Args: os.Args,
@@ -220,12 +229,22 @@ func Run(options ...RunOption) {
 		internalPorts = append(internalPorts, desktopIDEPort)
 	}
 
+	endpoint, host, err := cfg.GitpodAPIEndpoint()
+	if err != nil {
+		log.WithError(err).Fatal("cannot find Gitpod API endpoint")
+	}
 	var (
 		ideReady                       = &ideReadyState{cond: sync.NewCond(&sync.Mutex{})}
 		desktopIdeReady *ideReadyState = nil
 
 		cstate        = NewInMemoryContentState(cfg.RepoRoot)
-		gitpodService = createGitpodService(cfg, tokenService)
+		gitpodService = serverapi.NewServerApiService(ctx, &serverapi.ServiceConfig{
+			Host:              host,
+			Endpoint:          endpoint,
+			InstanceID:        cfg.WorkspaceInstanceID,
+			WorkspaceID:       cfg.WorkspaceID,
+			SupervisorVersion: Version,
+		}, tokenService)
 
 		notificationService = NewNotificationService()
 	)
@@ -245,7 +264,7 @@ func Run(options ...RunOption) {
 		&ports.PollingServedPortsObserver{
 			RefreshInterval: 2 * time.Second,
 		},
-		ports.NewConfigService(cfg.WorkspaceID, gitpodConfigService, gitpodService),
+		ports.NewConfigService(cfg.WorkspaceID, gitpodConfigService),
 		tunneledPortsService,
 		internalPorts...,
 	)
@@ -263,10 +282,15 @@ func Run(options ...RunOption) {
 		}
 		_, gitpodHost, err := cfg.GitpodAPIEndpoint()
 		if err != nil {
-			log.WithError(err).Error("supervisor: grpc metrics: failed to parse gitpod host")
+			log.WithError(err).Error("grpc metrics: failed to parse gitpod host")
 		} else {
 			metricsReporter = metrics.NewGrpcMetricsReporter(gitpodHost)
-			supervisorMetrics.Register(metricsReporter.Registry)
+			if err := supervisorMetrics.Register(metricsReporter.Registry); err != nil {
+				log.WithError(err).Error("could not register supervisor metrics")
+			}
+			if err := gitpodService.RegisterMetrics(metricsReporter.Registry); err != nil {
+				log.WithError(err).Error("could not register public api metrics")
+			}
 		}
 	}
 
@@ -330,7 +354,7 @@ func Run(options ...RunOption) {
 		shutdown = make(chan ShutdownReason, 1)
 	)
 	wg.Add(1)
-	go startContentInit(ctx, cfg, &wg, cstate)
+	go startContentInit(ctx, cfg, &wg, cstate, supervisorMetrics)
 	wg.Add(1)
 	go startAPIEndpoint(ctx, cfg, &wg, apiServices, tunneledPortsService, metricsReporter, apiEndpointOpts...)
 	wg.Add(1)
@@ -602,44 +626,7 @@ func installDotfiles(ctx context.Context, cfg *Config, tokenService *InMemoryTok
 	}
 }
 
-func createGitpodService(cfg *Config, tknsrv api.TokenServiceServer) *gitpod.APIoverJSONRPC {
-	endpoint, host, err := cfg.GitpodAPIEndpoint()
-	if err != nil {
-		log.WithError(err).Fatal("cannot find Gitpod API endpoint")
-		return nil
-	}
-	tknres, err := tknsrv.GetToken(context.Background(), &api.GetTokenRequest{
-		Kind: KindGitpod,
-		Host: host,
-		Scope: []string{
-			"function:getToken",
-			"function:openPort",
-			"function:getOpenPorts",
-			"function:guessGitTokenScopes",
-		},
-	})
-	if err != nil {
-		log.WithError(err).Error("cannot get token for Gitpod API")
-		return nil
-	}
-
-	gitpodService, err := gitpod.ConnectToServer(endpoint, gitpod.ConnectToServerOpts{
-		Token: tknres.Token,
-		Log:   log.Log,
-		ExtraHeaders: map[string]string{
-			"User-Agent":              "gitpod/supervisor",
-			"X-Workspace-Instance-Id": cfg.WorkspaceInstanceID,
-			"X-Client-Version":        Version,
-		},
-	})
-	if err != nil {
-		log.WithError(err).Error("cannot connect to Gitpod API")
-		return nil
-	}
-	return gitpodService
-}
-
-func createExposedPortsImpl(cfg *Config, gitpodService *gitpod.APIoverJSONRPC) ports.ExposedPortsInterface {
+func createExposedPortsImpl(cfg *Config, gitpodService serverapi.APIInterface) ports.ExposedPortsInterface {
 	if gitpodService == nil {
 		log.Error("auto-port exposure won't work")
 		return &ports.NoopExposedPorts{}
@@ -1354,7 +1341,7 @@ func startSSHServer(ctx context.Context, cfg *Config, wg *sync.WaitGroup, childP
 	}()
 }
 
-func startContentInit(ctx context.Context, cfg *Config, wg *sync.WaitGroup, cst ContentState) {
+func startContentInit(ctx context.Context, cfg *Config, wg *sync.WaitGroup, cst ContentState, metrics *metrics.SupervisorMetrics) {
 	defer wg.Done()
 	defer log.Info("supervisor: workspace content available")
 
@@ -1434,6 +1421,8 @@ func startContentInit(ctx context.Context, cfg *Config, wg *sync.WaitGroup, cst 
 		return
 	}
 
+	recordInitializerMetrics("/workspace", metrics)
+
 	err = os.Remove(fn)
 	if os.IsNotExist(err) {
 		// file is gone - we're good
@@ -1446,6 +1435,27 @@ func startContentInit(ctx context.Context, cfg *Config, wg *sync.WaitGroup, cst 
 
 	log.WithField("source", src).Info("supervisor: workspace content init finished")
 	cst.MarkContentReady(src)
+}
+
+func recordInitializerMetrics(path string, metrics *metrics.SupervisorMetrics) {
+	readyFile := filepath.Join(path, ".gitpod/ready")
+
+	content, err := os.ReadFile(readyFile)
+	if err != nil {
+		log.WithError(err).Errorf("could not find ready file at %v", readyFile)
+		return
+	}
+
+	var ready csapi.WorkspaceReadyMessage
+	err = json.Unmarshal(content, &ready)
+	if err != nil {
+		log.WithError(err).Error("could not unmarshal ready")
+		return
+	}
+
+	for _, m := range ready.Metrics {
+		metrics.InitializerHistogram.WithLabelValues(m.Type).Observe(float64(m.Size) / m.Duration.Seconds())
+	}
 }
 
 func socketActivationForDocker(ctx context.Context, wg *sync.WaitGroup, term *terminal.Mux) {
@@ -1501,7 +1511,7 @@ func socketActivationForDocker(ctx context.Context, wg *sync.WaitGroup, term *te
 	}
 }
 
-func startAnalyze(ctx context.Context, cfg *Config, gitpodConfigService config.ConfigInterface, topService *TopService, gitpodService gitpod.APIInterface) {
+func startAnalyze(ctx context.Context, cfg *Config, gitpodConfigService config.ConfigInterface, topService *TopService, gitpodService serverapi.APIInterface) {
 	analytics := analytics.NewFromEnvironment()
 	go analyseConfigChanges(ctx, cfg, analytics, gitpodConfigService, gitpodService)
 	go analysePerfChanges(ctx, cfg, analytics, topService, gitpodService)
@@ -1530,8 +1540,8 @@ func (a *PerfAnalyzer) analyze(used float64) bool {
 	return true
 }
 
-func analysePerfChanges(ctx context.Context, wscfg *Config, w analytics.Writer, topService *TopService, gitpodAPI gitpod.APIInterface) {
-	info, err := gitpodAPI.GetWorkspace(ctx, wscfg.WorkspaceID)
+func analysePerfChanges(ctx context.Context, wscfg *Config, w analytics.Writer, topService *TopService, gitpodAPI serverapi.APIInterface) {
+	ownerID, err := gitpodAPI.GetOwnerID(ctx, wscfg.WorkspaceID)
 	if err != nil {
 		log.WithError(err).Error("gitpod perf analytics: failed to resolve workspace info")
 		return
@@ -1543,7 +1553,7 @@ func analysePerfChanges(ctx context.Context, wscfg *Config, w analytics.Writer, 
 		}
 		log.WithField("buckets", analyzer.buckets).WithField("used", used).WithField("label", analyzer.label).Debug("gitpod perf analytics: changed")
 		w.Track(analytics.TrackMessage{
-			Identity: analytics.Identity{UserID: info.Workspace.OwnerID},
+			Identity: analytics.Identity{UserID: ownerID},
 			Event:    "gitpod_" + analyzer.label + "_changed",
 			Properties: map[string]interface{}{
 				"used":        used,
@@ -1572,8 +1582,8 @@ func analysePerfChanges(ctx context.Context, wscfg *Config, w analytics.Writer, 
 	}
 }
 
-func analyseConfigChanges(ctx context.Context, wscfg *Config, w analytics.Writer, cfgobs config.ConfigInterface, gitpodAPI gitpod.APIInterface) {
-	info, err := gitpodAPI.GetWorkspace(ctx, wscfg.WorkspaceID)
+func analyseConfigChanges(ctx context.Context, wscfg *Config, w analytics.Writer, cfgobs config.ConfigInterface, gitpodAPI serverapi.APIInterface) {
+	ownerID, err := gitpodAPI.GetOwnerID(ctx, wscfg.WorkspaceID)
 	if err != nil {
 		log.WithError(err).Error("gitpod config analytics: failed to resolve workspace info")
 		return
@@ -1594,7 +1604,7 @@ func analyseConfigChanges(ctx context.Context, wscfg *Config, w analytics.Writer
 			} else {
 				analyzer = config.NewConfigAnalyzer(log.Log, 5*time.Second, func(field string) {
 					w.Track(analytics.TrackMessage{
-						Identity: analytics.Identity{UserID: info.Workspace.OwnerID},
+						Identity: analytics.Identity{UserID: ownerID},
 						Event:    "gitpod_config_changed",
 						Properties: map[string]interface{}{
 							"key":         field,
@@ -1611,14 +1621,14 @@ func analyseConfigChanges(ctx context.Context, wscfg *Config, w analytics.Writer
 	}
 }
 
-func trackReadiness(ctx context.Context, gitpodService *gitpod.APIoverJSONRPC, cfg *Config, cstate *InMemoryContentState, ideReady *ideReadyState, desktopIdeReady *ideReadyState) {
+func trackReadiness(ctx context.Context, gitpodService serverapi.APIInterface, cfg *Config, cstate *InMemoryContentState, ideReady *ideReadyState, desktopIdeReady *ideReadyState) {
 	type SupervisorReadiness struct {
 		Kind                string `json:"kind,omitempty"`
 		WorkspaceId         string `json:"workspaceId,omitempty"`
 		WorkspaceInstanceId string `json:"instanceId,omitempty"`
 		Timestamp           int64  `json:"timestamp,omitempty"`
 	}
-	trackFn := func(ctx context.Context, gitpodService *gitpod.APIoverJSONRPC, cfg *Config, kind string) {
+	trackFn := func(ctx context.Context, gitpodService serverapi.APIInterface, cfg *Config, kind string) {
 		err := gitpodService.TrackEvent(ctx, &gitpod.RemoteTrackMessage{
 			Event: "supervisor_readiness",
 			Properties: SupervisorReadiness{

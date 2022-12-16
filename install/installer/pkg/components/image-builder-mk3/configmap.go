@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Gitpod GmbH. All rights reserved.
 // Licensed under the GNU Affero General Public License (AGPL).
-// See License-AGPL.txt in the project root for license information.
+// See License.AGPL.txt in the project root for license information.
 
 package image_builder_mk3
 
@@ -48,7 +48,7 @@ func configmap(ctx *common.RenderContext) ([]runtime.Object, error) {
 			},
 		},
 		PullSecret:               secretName,
-		PullSecretFile:           PullSecretFile,
+		PullSecretFile:           "/config/pull-secret/pull-secret.json",
 		BaseImageRepository:      fmt.Sprintf("%s/base-images", registryName),
 		BuilderImage:             ctx.ImageName(ctx.Config.Repository, BuilderImage, ctx.VersionManifest.Components.ImageBuilderMk3.BuilderImage.Version),
 		WorkspaceImageRepository: fmt.Sprintf("%s/workspace-images", registryName),
