@@ -109,7 +109,8 @@ func (service *OIDCService) GetClientConfigFromRequest(r *http.Request) (*OIDCCl
 	}
 	log.WithField("issuer", issuer).Trace("at GetClientConfigFromRequest")
 
-	for _, value := range service.configsById {
+	for id, value := range service.configsById {
+		log.WithField("issuer", value.Issuer).WithField("id", id).Trace("candidate")
 		if value.Issuer == issuer {
 			return value, nil
 		}
